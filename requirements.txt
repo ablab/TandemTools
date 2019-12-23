@@ -1,0 +1,9 @@
+biopython
+click
+edlib
+joblib
+numpy
+matplotlib
+pandas
+plotly
+python-slugify
