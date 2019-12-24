@@ -291,9 +291,8 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec,
 	const float LG_GAP = 10;
 	const float SM_GAP = 0;
 	const float SM_DIFF = 100;
-	const float MAX_DIFF = 500;  // max difference between distances in a read and in an assembly
+	const float MAX_DIFF = 0.15;  // max difference between distances in a read and in an assembly
 	const float KMER_BONUS = 10; // bonus for each added non-overlapping k-mer
-    const float MAX_PENALTY = 10; // max penalty for an alignment
 
 	outSuggestChimeric = false;
 	int32_t curLen = fastaRec.sequence.length();
@@ -476,12 +475,12 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec,
 				{
 					int32_t matchScore = std::min(abs(curNext - curPrev), abs(extNext - extPrev));
 					int32_t distDiff = abs(abs(curNext - curPrev) - abs(extNext - extPrev));
-					if (distDiff<=MAX_DIFF) {
+					if (distDiff<=MAX_DIFF*matchScore) {
                         int32_t diffPenalty = distDiff > SM_DIFF ? (distDiff*100)/matchScore : std::min(1, distDiff);
                         int32_t maxBonus = matchScore >= kmerSize ? KMER_BONUS : 1;
 
                         int32_t nextScore = scoreTable[j] + maxBonus - diffPenalty;
-                        if (nextScore > maxScore && nextScore - scoreTable[j] > -100 && diffPenalty <= MAX_PENALTY)
+                        if (nextScore > maxScore && nextScore - scoreTable[j] > -100)
                         {
                             maxScore = nextScore;
                             maxId = j;
