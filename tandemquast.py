@@ -62,8 +62,11 @@ def main(assembly_fnames, labels, reads_fname, hifi_reads_fname, out_dir, thread
             sys.exit(2)
 
     assemblies = [Assembly(assembly_fnames[i], out_dir, name=list_labels[i]) for i in range(len(assembly_fnames))]
-    mask_files(assemblies, out_dir, no_reuse)
-
+    if not only_polish:
+        mask_files(assemblies, out_dir, no_reuse)
+    else:
+        for assembly in assemblies:
+            assembly.fname = assembly.raw_fname
     # -----SELECT KMERS----
     from scripts import select_kmers, coverage_test, bp_analysis, kmer_analysis, pairwise_comparison, discordance, monomer_analysis
     select_kmers.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
