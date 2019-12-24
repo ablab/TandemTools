@@ -185,14 +185,14 @@ def do(assemblies, reads_fname, monomers_fname, out_dir):
         ref_unit_structure, monomers_pattern = analyze_unit_structure(ref_mm_structure)
 
         unit_occ = defaultdict(int)
-        units_fname = join(out_dir, "%s_units.txt") % assembly.name,
-        with open( "w") as f:
-            f.write("\t".join(["Unit", "Start", "End", "Monomer sequence"]))
+        units_fname = join(out_dir, "%s_units.txt") % assembly.name
+        with open(units_fname, "w") as f:
+            f.write("\t".join(["Unit", "Start", "End", "Monomer sequence\n"]))
             for i in range(len(ref_unit_structure)):
                 if not ref_unit_structure[i]:
                     continue
                 unit_str = ref_unit_structure[i][2]
                 unit_occ[unit_str] += 1
-                f.write("\t".join(str(s) for s in [i+1, ref_unit_structure[i][0], ref_unit_structure[i][1], unit_str]))
+                f.write("\t".join(str(s) for s in [i+1, ref_unit_structure[i][0], ref_unit_structure[i][1], unit_str])+"\n")
 
         print("Total units: %d, units sequences saved to %s" % (len(ref_unit_structure), units_fname))
