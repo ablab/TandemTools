@@ -164,9 +164,12 @@ def postprocess_chains(assembly_fname, kmers_fname, chains_fname, bed_fname):
 
 
 def do(assemblies, reads_fname, out_dir, threads, no_reuse):
+    print("")
+    print("*********************************")
+    print("Read mapping started...")
     run_parallel(run_flye, [(assembly.fname, reads_fname, out_dir, assembly.kmers_fname, assembly.chains_fname, max(1, threads // len(assemblies)))
                             for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse], n_jobs=threads)
     for assembly in assemblies:
         postprocess_chains(assembly.fname, assembly.kmers_fname, assembly.chains_fname, assembly.bed_fname)
-    print("Reads mapping finished")
+    print("Read mapping finished")
 
