@@ -1,13 +1,13 @@
 import subprocess
 import sys
 from collections import defaultdict
-from os.path import join, exists, basename, abspath, dirname, realpath
+from os.path import join, exists, basename
 
 from Bio import SeqIO
 
 from config import *
 from scripts.reporting import make_plot
-from scripts.utils import rev_comp, get_ext_tools_dir, run_parallel
+from scripts.utils import rev_comp, get_ext_tools_dir
 
 kmc_bin = join(get_ext_tools_dir(), 'KMC', sys.platform, 'kmc')
 kmctools_bin = join(get_ext_tools_dir(), 'KMC', sys.platform, 'kmc_tools')
@@ -31,43 +31,33 @@ def draw_plot(assembly, kmers, plot_fname, kmers_type):
               bar_values=unique_bins, plot_color="blue", max_x=assembly_len)
 
 
-def run_kmc(seq, out_dir, unique_kmers):
-    tmp_seq_fname = join(out_dir, "tmp_seq.fa")
+def run_kmc(seq, out_dir):
+    kmers = set()
     tmp_db_fname = join(out_dir, "tmp_kmc")
     tmp_out_fname = join(out_dir, "tmp_kmers.txt")
-    with open(tmp_seq_fname, "w") as f:
-        f.write(">1\n")
-        f.write(seq)
-    cmd = [kmc_bin, "-k%d" % KMER_SIZE, "-fm", "-cx1", "-ci1", "-cs10000", tmp_seq_fname, tmp_db_fname, out_dir]
+    cmd = [kmc_bin, "-k%d" % KMER_SIZE, "-b", "-fm", "-ci1", "-cx100", "-cs10000", seq, tmp_db_fname, out_dir]
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     cmd = [kmctools_bin, "transform", tmp_db_fname, "dump", tmp_out_fname]
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     with open(tmp_out_fname) as f:
         for line in f:
             kmer, freq = line.strip().split()
-            unique_kmers.add(kmer)
+            kmers.add(kmer)
+    return kmers
 
-def find_locally_unique_kmers(assembly, assembly_kmc_db, kmer_freq, tmp_dir):
-    seq = ''
-    with open(assembly.fname) as f:
-        for record in SeqIO.parse(f, 'fasta'):
-            seq = str(record.seq)
 
-    unique_kmers = set()
-    chunk_size = len(seq) // SEGMENTS_NUM + 1
-    for i in range(0, len(seq), chunk_size):
-        run_kmc(seq[i:i+chunk_size+KMER_SIZE], tmp_dir, unique_kmers)
+def find_rare_kmers(assembly, assembly_kmc_db, tmp_dir):
+    potential_kmers = run_kmc(assembly.fname, tmp_dir)
 
     num_kmers = 0
     with open(assembly.all_kmers_fname, "w") as f:
-        for i, k in enumerate(unique_kmers):
-            if kmer_freq[k] < MAX_KMER_FREQ:
-                f.write(">%d\n" % i)
-                f.write("%s\n" % k)
-                num_kmers += 1
+        for i, kmer in enumerate(potential_kmers):
+            f.write(">%d\n" % i)
+            f.write("%s\n" % kmer)
+            num_kmers += 1
     cmd = [kmc_bin, "-k%d" % KMER_SIZE, "-fm", "-cx1", "-ci1", assembly.all_kmers_fname, assembly_kmc_db, tmp_dir]
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
-    #print("%d unique k-mers without filtration" % num_kmers)
+    print("%d unique k-mers without filtration" % num_kmers)
 
 
 def filter_kmers(reads_fname, kmers):
@@ -89,17 +79,17 @@ def filter_kmers(reads_fname, kmers):
     return solid_kmers
 
 
-def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse):
+def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, only_polish=False):
     print("")
     print("*********************************")
     print("K-mers selection started...")
 
     for assembly in assemblies:
         print("")
-        print("Processing %s assembly..." % assembly.label)
         if exists(assembly.solid_kmers_fname) and not no_reuse:
             print("Reusing previously selected k-mers...")
             continue
+        print("Analyzing %s assembly" % assembly.label)
         readkmers_kmc_db = join(tmp_dir, basename(reads_fname))
         readkmers_fname = join(out_dir, basename(reads_fname)+".kmers.txt")
         if not exists(readkmers_fname) or no_reuse:
@@ -110,7 +100,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse):
 
         tmp_all_kmc_db = join(out_dir, assembly.name+".all_kmers")
         tmp_all_kmers_fname = join(out_dir, assembly.name+".all_kmers.txt")
-        cmd = [kmc_bin, "-k%d" % KMER_SIZE, "-fm", "-ci1", assembly.fname, tmp_all_kmc_db, tmp_dir]
+        cmd = [kmc_bin, "-k%d" % KMER_SIZE, "-b", "-fm", "-ci1", assembly.fname, tmp_all_kmc_db, tmp_dir]
         subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
         cmd = [kmctools_bin, "transform", tmp_all_kmc_db, "dump", tmp_all_kmers_fname]
         subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
@@ -118,10 +108,10 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse):
         with open(tmp_all_kmers_fname) as f:
             for line in f:
                 kmer, freq = line.split()
-                kmer_freq[kmer] = int(freq)
+                kmer_freq[min(kmer,rev_comp(kmer))] = int(freq)
 
         assembly_kmc_db = join(tmp_dir, assembly.name)
-        find_locally_unique_kmers(assembly, assembly_kmc_db, kmer_freq, tmp_dir)
+        find_rare_kmers(assembly, assembly_kmc_db, tmp_dir)
 
         tmp_kmers_fname = join(tmp_dir, assembly.name+".kmers.txt")
         missed_kmers_db = join(tmp_dir, assembly.name+".missed")
@@ -134,7 +124,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse):
         subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
         cmd = [kmctools_bin, "transform", missed_kmers_db, "dump", missed_kmers_fname]
         subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
-        cmd = [kmctools_bin, "transform", intersect_kmc_db, "-ci%d" % MIN_OCCURRENCES, "-cx%d" % MAX_OCCURRENCES, "dump", tmp_kmers_fname]
+        cmd = [kmctools_bin, "transform", intersect_kmc_db, "-ci1", "-cx%d" % MAX_OCCURRENCES, "dump", tmp_kmers_fname]
         subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
         cmd = [kmctools_bin, "transform", intersect_kmc_db, "histogram", kmers_hist_fname]
         subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
@@ -196,7 +186,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse):
         with open(tmp_kmers_fname) as f:
             for line in f:
                 kmer, occ = line.strip().split()
-                if int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
+                if real_min_occ <= int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
                     selected_kmers.add(kmer)
 
         print("  %d locally unique k-mers were selected" % len(selected_kmers))
@@ -204,16 +194,17 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse):
         plot_fname = join(out_dir, assembly.name + "_selected_kmers.png")
         draw_plot(assembly, selected_kmers, plot_fname, "selected")
 
-        #print("")
         #print("  Filtering unique solid k-mers...")
         with open(assembly.kmers_fname, "w") as out_f:
             for kmer in selected_kmers:
                 out_f.write("%s\n" % kmer)
-                if kmer_freq[kmer] == 1:
+                if kmer_freq[min(kmer,rev_comp(kmer))] == 1:
                     solid_kmers.add(kmer)
 
-        solid_kmers = filter_kmers(reads_fname,solid_kmers)
+        if not only_polish:
+            solid_kmers = filter_kmers(reads_fname,solid_kmers)
         with open(assembly.solid_kmers_fname, "w") as f:
             for kmer in solid_kmers:
                 f.write("%s\n" % kmer)
         print("  %d unique solid k-mers were selected" % len(solid_kmers))
+

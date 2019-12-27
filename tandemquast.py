@@ -34,7 +34,7 @@ def set_params(fnames, threads):
 @click.argument('assembly_fnames', type=click.Path(exists=True), nargs=-1)
 @click.option('-l', 'labels', help='Comma separated list of assembly labels')
 @click.option('-r', 'reads_fname', type=click.Path(exists=True), required=True, help='File with reads')
-@click.option('--hi-fi', 'hifi_reads_fname',  type=click.Path(), help='File with HiFi reads (optional)')
+@click.option('--hi-fi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads (optional)')
 @click.option('-m', 'monomers_fname', type=click.Path(), help='Monomer sequence')
 @click.option('-o', 'out_dir',  type=click.Path(), help='Output folder')
 @click.option('-t', 'threads', type=click.INT, help='Threads', default=config.MAX_THREADS)
@@ -69,14 +69,14 @@ def main(assembly_fnames, labels, reads_fname, hifi_reads_fname, out_dir, thread
             assembly.fname = assembly.raw_fname
     # -----SELECT KMERS----
     from scripts import select_kmers, coverage_test, bp_analysis, kmer_analysis, pairwise_comparison, discordance, monomer_analysis
-    select_kmers.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
-
     if only_polish:
-        polishing.do(assemblies, reads_fname, out_dir, no_reuse)
+        polishing.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print("")
         print("%s TandemQUAST finished" % date)
         sys.exit(0)
+
+    select_kmers.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
 
     # -----MAPPING----
     print("")

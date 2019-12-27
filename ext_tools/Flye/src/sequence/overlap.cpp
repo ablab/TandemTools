@@ -356,13 +356,25 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec,
 						(std::chrono::system_clock::now() - timeStart).count();
 	timeStart = std::chrono::system_clock::now();
 
+	cuckoohash_map<Kmer, char> _goodKmers;
+	cuckoohash_map<Kmer, char> _badKmers;
 	for (const auto& curKmerPos : IterKmers(fastaRec.sequence))
 	{
-		if (_vertexIndex.isRepetitive(curKmerPos.kmer))
-		{
-			curFilteredPos.push_back(curKmerPos.position);
-		}
 		if (!_vertexIndex.kmerFreq(curKmerPos.kmer)) continue;
+
+        if (_goodKmers.contains(curKmerPos.kmer) && !_badKmers.contains(curKmerPos.kmer))
+        {
+            _badKmers.insert(curKmerPos.kmer, true);
+        }
+        else
+        {
+            _goodKmers.insert(curKmerPos.kmer, true);
+        }
+	}
+
+	for (const auto& curKmerPos : IterKmers(fastaRec.sequence))
+	{
+		if (!_goodKmers.contains(curKmerPos.kmer)) continue;
 
 		//FastaRecord::Id prevSeqId = FastaRecord::ID_NONE;
         Kmer k = curKmerPos.kmer;
@@ -981,6 +993,7 @@ void OverlapContainer::estimateOverlaperParameters(std::string& outFile)
             const FastaRecord fastaRec = _queryContainer.getRecord(_queryContainer.iterSeqs()[i].id);
             if (_ovlpDetect._seqContainer.seqName(ovlp.extId).front()=='+') {
                 size_t alignLen = std::min(ovlp.curLen - ovlp.curBegin-1, ovlp.extLen-ovlp.extBegin-1);
+                //[2019-12-26 17:48:05] INFO: 124562 255115 160554 62322 63480
                 Logger::get().info() << alignLen << " " << ovlp.curBegin << " " << ovlp.extBegin << " "<<(ovlp.extEnd - ovlp.extBegin-1) << " " << (ovlp.curEnd - ovlp.curBegin-1);
                 std::string s = kswAlign(_ovlpDetect._seqContainer.getSeq(ovlp.extId), _ovlpDetect._seqContainer.seqName(ovlp.extId), ovlp.extBegin,
                                          (ovlp.extEnd - ovlp.extBegin-1), fastaRec.sequence, fastaRec.description, ovlp.curBegin, (ovlp.curEnd - ovlp.curBegin-1),

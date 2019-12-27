@@ -52,14 +52,12 @@ def check_binaries():
         raise PolishException(str(e))
 
 
-def polish(contig_seqs, read_seqs, work_dir, kmers_fname, genome_size, num_iters, num_threads, error_mode, config_fname,
-           output_progress):
+def polish(contig_seqs, read_seqs, work_dir, kmers_fname, genome_size, num_threads, error_mode, config_fname, i):
     """
     High-level polisher interface
     """
     logger_state = logger.disabled
-    if not output_progress:
-        logger.disabled = True
+    logger.disabled = True
 
     subs_matrix = os.path.join(cfg.vals["pkg_root"],
                                cfg.vals["err_modes"][error_mode]["subs_matrix"])
@@ -70,80 +68,58 @@ def polish(contig_seqs, read_seqs, work_dir, kmers_fname, genome_size, num_iters
     prev_assembly = contig_seqs
     contig_lengths = None
     coverage_stats = None
-    for i in range(num_iters):
-        logger.info("Polishing genome (%d/%d)", i + 1, num_iters)
 
-        logger.info("Running unique k-mer mapper")
-        raw_alignment_file = os.path.join(work_dir, "aln_%d.sam" %i)
-        alignment_file = os.path.join(work_dir, "aln_%d.sort.sam" %i)
-        cmd = "%s " \
-              "--reads %s " \
-              "--out-asm draft_assembly.fasta " \
-              "--genome-size %s --config %s " \
-              "--log %s/flye.log --min-ovlp 3000  " \
-              "--out-file %s --kmers %s " \
-              "--asm %s --debug --kmer %s" % (ASSEMBLY_BIN, read_seqs, genome_size, config_fname,
-                work_dir, raw_alignment_file, kmers_fname, prev_assembly, KMER_SIZE)
-        print(cmd)
+    logger.info(    "Running unique k-mer mapper")
+    raw_alignment_file = os.path.join(work_dir, "aln_%d.sam" %i)
+    alignment_file = os.path.join(work_dir, "aln_%d.sort.sam" %i)
+    cmd = "%s " \
+          "--reads %s " \
+          "--out-asm draft_assembly.fasta " \
+          "--genome-size %s --config %s " \
+          "--log %s/flye.log --min-ovlp 3000  " \
+          "--out-file %s --kmers %s " \
+          "--asm %s --debug --kmer %s" % (ASSEMBLY_BIN, read_seqs, genome_size, config_fname,
+            work_dir, raw_alignment_file, kmers_fname, prev_assembly, KMER_SIZE)
+    print(cmd)
 
-        subprocess.call(cmd, shell=True,stderr=open("/dev/null", "w"))
-        subprocess.call(['sort', '-k4,4n', raw_alignment_file], stdout=open(alignment_file, "w"))
+    subprocess.call(cmd, shell=True,stderr=open("/dev/null", "w"))
+    subprocess.call(['sort', '-k4,4n', raw_alignment_file], stdout=open(alignment_file, "w"))
 
-        print("Alignment finished")
+    print("Alignment finished")
 
-        #####
-        logger.info("Separating alignment into bubbles")
-        contigs_info = get_contigs_info(prev_assembly)
-        bubbles_file = os.path.join(work_dir,
-                                    "bubbles_{0}.fasta".format(i + 1))
-        coverage_stats, mean_aln_error = \
-            make_bubbles(alignment_file, contigs_info, prev_assembly,
-                         error_mode, num_threads,
-                         bubbles_file)
+    #####
+    logger.info("Separating alignment into bubbles")
+    contigs_info = get_contigs_info(prev_assembly)
+    bubbles_file = os.path.join(work_dir,
+                                "bubbles_{0}.fasta".format(i + 1))
+    coverage_stats, mean_aln_error = \
+        make_bubbles(alignment_file, contigs_info, prev_assembly,
+                     error_mode, num_threads,
+                     bubbles_file)
 
-        logger.info("Alignment error rate: %f", mean_aln_error)
-        consensus_out = os.path.join(work_dir, "consensus_{0}.fasta".format(i + 1))
-        polished_file = os.path.join(work_dir, "polished_{0}.fasta".format(i + 1))
-        if os.path.getsize(bubbles_file) == 0:
-            logger.info("No reads were aligned during polishing")
-            if not output_progress:
-                logger.disabled = logger_state
-            open(stats_file, "w").write("#seq_name\tlength\tcoverage\n")
-            open(polished_file, "w")
-            return polished_file, stats_file
+    logger.info("Alignment error rate: %f", mean_aln_error)
+    consensus_out = os.path.join(work_dir, "consensus_{0}.fasta".format(i + 1))
+    polished_file = os.path.join(work_dir, "polished_{0}.fasta".format(i + 1))
+    if os.path.getsize(bubbles_file) == 0:
+        logger.info("No reads were aligned during polishing")
+        open(polished_file, "w")
+        return polished_file
 
-        #####
-        logger.info("Correcting bubbles")
-        _run_polish_bin(bubbles_file, subs_matrix, hopo_matrix,
-                        consensus_out, num_threads, output_progress)
-        polished_fasta, polished_lengths = _compose_sequence(consensus_out)
-        merged_chunks = merge_chunks(polished_fasta)
-        fp.write_fasta_dict(merged_chunks, polished_file)
+    #####
+    logger.info("Correcting bubbles")
+    _run_polish_bin(bubbles_file, subs_matrix, hopo_matrix,
+                    consensus_out, num_threads, False)
+    polished_fasta, polished_lengths = _compose_sequence(consensus_out)
+    merged_chunks = merge_chunks(polished_fasta)
+    fp.write_fasta_dict(merged_chunks, polished_file)
 
-        #Cleanup
-        #os.remove(chunks_file)
-        #os.remove(bubbles_file)
-        #os.remove(consensus_out)
-        #os.remove(alignment_file)
+    #Cleanup
+    #os.remove(chunks_file)
+    #os.remove(bubbles_file)
+    #os.remove(consensus_out)
+    #os.remove(alignment_file)
 
-        contig_lengths = polished_lengths
-        prev_assembly = polished_file
-
-    #merge information from chunks
-    contig_lengths = merge_chunks(contig_lengths, fold_function=sum)
-    coverage_stats = merge_chunks(coverage_stats,
-                                  fold_function=lambda l: sum(l) // len(l))
-
-    with open(stats_file, "w") as f:
-        f.write("#seq_name\tlength\tcoverage\n")
-        for ctg_id in contig_lengths:
-            f.write("{0}\t{1}\t{2}\n".format(ctg_id,
-                    contig_lengths[ctg_id], coverage_stats[ctg_id]))
-
-    if not output_progress:
-        logger.disabled = logger_state
-
-    return prev_assembly, stats_file
+    return polished_file
 
 
 def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
