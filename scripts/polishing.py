@@ -35,6 +35,6 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse):
         select_kmers.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse=True, only_polish=True)
         for assembly in assemblies:
             print("Polishing genome (%d/%d)" % (i+1, 4))
-            assembly.raw_fname = polish(assembly.raw_fname, reads_fname, out_dir, assembly.kmers_fname,
-                                        get_fasta_len(assembly.raw_fname), config.MAX_THREADS, "nano", get_flye_cfg_fname(), i)
+            assembly.fname = polish(assembly.fname, reads_fname, out_dir, assembly.kmers_fname,
+                                    get_fasta_len(assembly.fname), config.MAX_THREADS, "nano", get_flye_cfg_fname(), i)
     print("Polished assemblies saved to %s" % out_dir)

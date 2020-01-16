@@ -53,7 +53,7 @@ def get_reads_monomer_structure(reads_fname, monomers_fname, out_dir):
 def get_ref_monomers(assembly, monomers_fname, out_dir):
     decomposition_fname = join(out_dir, "decomposition_%s.tsv" % assembly.name)
     if not exists(decomposition_fname):
-        run_decomposer(assembly.raw_fname, decomposition_fname, monomers_fname)
+        run_decomposer(assembly.fname, decomposition_fname, monomers_fname)
 
     monomers = []
     monomer_stats = defaultdict(list)

@@ -1,13 +1,15 @@
+import random
 import subprocess
 import sys
 from collections import defaultdict
 from os.path import join, exists, basename
 
 from Bio import SeqIO
+import numpy as np
 
 from config import *
 from scripts.reporting import make_plot
-from scripts.utils import rev_comp, get_ext_tools_dir
+from scripts.utils import rev_comp, get_ext_tools_dir, get_kmers_positions
 
 kmc_bin = join(get_ext_tools_dir(), 'KMC', sys.platform, 'kmc')
 kmctools_bin = join(get_ext_tools_dir(), 'KMC', sys.platform, 'kmc_tools')
@@ -35,7 +37,7 @@ def run_kmc(seq, out_dir):
     kmers = set()
     tmp_db_fname = join(out_dir, "tmp_kmc")
     tmp_out_fname = join(out_dir, "tmp_kmers.txt")
-    cmd = [kmc_bin, "-k%d" % KMER_SIZE, "-b", "-fm", "-ci1", "-cx100", "-cs10000", seq, tmp_db_fname, out_dir]
+    cmd = [kmc_bin, "-k%d" % KMER_SIZE, "-b", "-fm", "-ci1", "-cx20", "-cs10000", seq, tmp_db_fname, out_dir]
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     cmd = [kmctools_bin, "transform", tmp_db_fname, "dump", tmp_out_fname]
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
@@ -48,7 +50,6 @@ def run_kmc(seq, out_dir):
 
 def find_rare_kmers(assembly, assembly_kmc_db, tmp_dir):
     potential_kmers = run_kmc(assembly.fname, tmp_dir)
-
     num_kmers = 0
     with open(assembly.all_kmers_fname, "w") as f:
         for i, kmer in enumerate(potential_kmers):
@@ -57,7 +58,7 @@ def find_rare_kmers(assembly, assembly_kmc_db, tmp_dir):
             num_kmers += 1
     cmd = [kmc_bin, "-k%d" % KMER_SIZE, "-fm", "-cx1", "-ci1", assembly.all_kmers_fname, assembly_kmc_db, tmp_dir]
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
-    print("%d unique k-mers without filtration" % num_kmers)
+    print("  %d unique k-mers without filtration" % num_kmers)
 
 
 def filter_kmers(reads_fname, kmers):
@@ -163,7 +164,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
                 real_max_occ = i + 1
                 break
 
-        #print("Max k-mer occurrences in read-set: %d" % real_max_occ)
+        # print("Max k-mer occurrences in read-set: %d" % real_max_occ)
 
         hifi_kmers = defaultdict(int)
         if hifi_reads_fname:
@@ -178,7 +179,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
                 for line in f:
                     k, freq = line.split()
                     hifi_kmers[k] = int(freq)
-            #print("Total %d k-mers in HiFi read-set" % len(hifi_kmers))
+            # print("Total %d k-mers in HiFi read-set" % len(hifi_kmers))
 
         selected_kmers = set()
         solid_kmers = set()
@@ -189,6 +190,21 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
                 if real_min_occ <= int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
                     selected_kmers.add(kmer)
 
+        ref_kmers_pos, kmer_by_pos = get_kmers_positions(assembly.fname, selected_kmers)
+        kmer_markers = [1 if i else 0 for i in kmer_by_pos]
+        kmer_density = [sum(kmer_markers[i:i+KMER_SELECT_WINDOW_SIZE]) for i in range(0, len(kmer_by_pos), KMER_SELECT_WINDOW_SIZE/2)]
+        kmer_density = [k for k in kmer_density if k > 1]
+        max_density = int(np.mean(kmer_density) + 2*np.std(kmer_density))
+        filtered_kmers = []
+        for i in range(0, len(kmer_by_pos), KMER_SELECT_WINDOW_SIZE/2):
+            cur_kmers = [k for k in kmer_by_pos[i:i+KMER_SELECT_WINDOW_SIZE] if k]
+            if not cur_kmers:
+                continue
+            if sum(kmer_markers[i:i+KMER_SELECT_WINDOW_SIZE]) > max_density:
+                filtered_kmers.extend(random.sample(cur_kmers, max_density))
+            else:
+                filtered_kmers.extend(cur_kmers)
+        selected_kmers = set(filtered_kmers)
         print("  %d locally unique k-mers were selected" % len(selected_kmers))
 
         plot_fname = join(out_dir, assembly.name + "_selected_kmers.png")

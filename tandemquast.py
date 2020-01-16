@@ -11,7 +11,7 @@ import click
 import config
 from scripts import polishing
 from scripts.assembly import Assembly
-from scripts.utils import get_fasta_len, mask_files, check_fasta_files
+from scripts.utils import get_fasta_len, check_fasta_files
 
 
 def set_params(fnames, threads):
@@ -32,17 +32,22 @@ def set_params(fnames, threads):
 
 @click.command()
 @click.argument('assembly_fnames', type=click.Path(exists=True), nargs=-1)
-@click.option('-l', 'labels', help='Comma separated list of assembly labels')
-@click.option('-r', 'reads_fname', type=click.Path(exists=True), required=True, help='File with reads')
-@click.option('--hi-fi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads (optional)')
-@click.option('-m', 'monomers_fname', type=click.Path(), help='Monomer sequence')
-@click.option('-o', 'out_dir',  type=click.Path(), help='Output folder')
+@click.option('-r', 'reads_fname', type=click.Path(exists=True), required=True, help='File with PacBio CLR or ONT reads')
+@click.option('-o', 'out_dir',  type=click.Path(), required=True, help='Output folder')
 @click.option('-t', 'threads', type=click.INT, help='Threads', default=config.MAX_THREADS)
+@click.option('-m', 'monomers_fname', type=click.Path(), help='Monomer sequence')
+@click.option('-l', 'labels', help='Comma separated list of assembly labels')
+@click.option('--hi-fi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads')
 @click.option('--only-polish', 'only_polish', is_flag=True, help='Run polishing only')
 @click.option('-f', '--no-reuse', 'no_reuse', is_flag=True, help='Do not reuse old files')
 def main(assembly_fnames, labels, reads_fname, hifi_reads_fname, out_dir, threads, monomers_fname, no_reuse, only_polish):
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("%s TandemQUAST started" % date)
+
+    if not assembly_fnames:
+        print("ERROR! You should specify at least one assembly file.")
+        sys.exit(2)
+
     set_params(assembly_fnames, threads)
 
     out_dir = abspath(out_dir)
@@ -61,14 +66,10 @@ def main(assembly_fnames, labels, reads_fname, hifi_reads_fname, out_dir, thread
             print("ERROR! Number of labels must correspond to the number of analyzed assemblies")
             sys.exit(2)
 
-    assemblies = [Assembly(assembly_fnames[i], out_dir, name=list_labels[i]) for i in range(len(assembly_fnames))]
-    if not only_polish:
-        mask_files(assemblies, out_dir, no_reuse)
-    else:
-        for assembly in assemblies:
-            assembly.fname = assembly.raw_fname
+    assemblies = [Assembly(assembly_fnames[i], name=list_labels[i], out_dir=out_dir) for i in range(len(assembly_fnames))]
     # -----SELECT KMERS----
     from scripts import select_kmers, coverage_test, bp_analysis, kmer_analysis, pairwise_comparison, discordance, monomer_analysis
+
     if only_polish:
         polishing.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

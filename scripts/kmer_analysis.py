@@ -99,9 +99,9 @@ def do(assemblies, reads_fname, out_dir, no_reuse=False):
     kmer_stats_table.append(["K-mers forming multiple clumps"] + ["-" for assembly in assemblies])
     kmer_stats_table.append(["K-mers forming no clumps"] + ["-" for assembly in assemblies])
     for i,assembly in enumerate(assemblies):
-        if exists(assembly.good_kmers_fname) and exists(join(out_dir, assembly.name + "_kmer_stats.txt")) and not no_reuse:
+        if exists(assembly.good_kmers_fname) and exists(join(out_dir, "report", assembly.name + "_kmer_stats.txt")) and not no_reuse:
             print("Reusing latest results...")
-            with open(join(out_dir, assembly.name + "_kmer_stats.txt")) as f:
+            with open(join(out_dir, "report", assembly.name + "_kmer_stats.txt")) as f:
                 line = f.readline()
                 kmer_stats_table[1][i+1] = line.split("\t")[1]
                 line = f.readline()
