@@ -182,7 +182,7 @@ def do(assemblies, reads_fname, monomers_fname, out_dir):
                   ymax=1.05, max_x=assembly_len)
 
         #### UNIT ANALYSIS
-        ref_unit_structure, monomers_pattern = analyze_unit_structure(ref_mm_structure)
+        ref_unit_structure = analyze_unit_structure(ref_mm_structure)
 
         unit_occ = defaultdict(int)
         units_fname = join(out_dir, "%s_units.txt") % assembly.name

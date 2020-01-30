@@ -1,12 +1,76 @@
-import re
 from collections import defaultdict
 
-import numpy as np
 try:
     from regex import regex
 except:
     import regex
 from config import *
+
+
+def get_units(s, kmers):
+    edges = defaultdict(int)
+    vertices = defaultdict(int)
+
+    g = defaultdict(list)
+    for kmer, occ in kmers.items():
+        v1 = kmer[:-1]
+        v2 = kmer[1:]
+        edges[(v1,v2)] += occ
+        vertices[v1] += occ//2
+        vertices[v2] += occ//2
+        g[v1].append(v2)
+
+    units = defaultdict(int)
+    while max(edges.values()) > 0:
+        kmers = [v for v,i in vertices.items() if i>0]
+        if not kmers:
+            break
+        max_edge = max(edges.items(), key=lambda k: k[1])[0]
+        start_v = min(kmers)
+        unit = [start_v]
+        v = start_v
+        path_cov = max(edges.values())
+        added_edges = []
+        while g[v]:
+            cur_str = unit[0] + ''.join([x[-1] for x in unit[1:]])
+            next_f, next_v = 0, g[v][0]
+            for i in g[v]:
+                if vertices[i] > next_f and cur_str + i[-1] in s:
+                    next_f,next_v=vertices[i],i
+            path_cov = min(path_cov, edges[(v, next_v)])
+            added_edges.append((v,next_v))
+            v = next_v
+            if next_v == start_v:
+                break
+            if next_f == 0:
+                break
+            unit.append(next_v)
+
+        vertices[unit[0]] -= 1
+        for i in range(1, len(unit)):
+            edges[(unit[i - 1], unit[i])] -= 1
+            if edges[(unit[i - 1], unit[i])] == 0:
+                g[unit[i - 1]].remove(unit[i])
+            vertices[unit[i]] -= 1
+        edges[(unit[-1], unit[0])] -= 1
+        if edges[(unit[-1], unit[0])] == 0:
+            g[unit[-1]].remove(unit[0])
+        if v == start_v:
+            unit_str = unit[0] + ''.join([x[-1] for x in unit[1:-(TMER_SIZE-2)]])
+            unit_start = unit_str.index(min(unit_str))
+            unit_str = unit_str[unit_start:] + unit_str[:unit_start]
+            s = s.replace(unit_str, '', 1)
+            if len(unit) >= 3:
+                units[unit_str] += 1
+        else:
+            unit_str = unit[0] + ''.join([x[-1] for x in unit[1:]])
+            s = s.replace(unit_str, '', 1)
+            if len(unit) >= 3:
+                units[unit_str] += 1
+
+    units_occ = [(unit,occ) for unit, occ in units.items()]
+    units_occ.sort(key=lambda x:len(x[0]), reverse=True)
+    return units_occ
 
 
 def analyze_unit_structure(monomer_structure):
@@ -17,74 +81,21 @@ def analyze_unit_structure(monomer_structure):
         if abs(monomer_structure[i][1] - monomer_structure[i-1][2]) > MONOMER_GAP_SIZE:
             gaps.append((i, min(monomer_structure[i-1][2], monomer_structure[i-1][1]), max(monomer_structure[i-1][2], monomer_structure[i-1][1]), monomer_structure[i-1][0]))
     monomers_str = ''.join([x[0] for x in monomer_structure])
-    tmers = defaultdict(list)
+    tmers = defaultdict(int)
     for i in range(len(monomers_str) - TMER_SIZE + 1):
-        tmers[monomers_str[i:i + TMER_SIZE]].append(i)
-    mean_occ = np.percentile([len(occ) for t, occ in tmers.items()], 95)
-    distances = []
-    for tmer, occ in tmers.items():
-        if len(occ) < mean_occ:
-            continue
-        dist = [occ[i] - occ[i - 1] for i in range(1, len(occ))]
-        if dist:
-            distances.append(np.median(dist))
+        tmers[monomers_str[i:i + TMER_SIZE]] += 1
+    if not tmers:
+        return unit_structure
 
-    if not distances:
-        return unit_structure, None
-
-    d = int(np.median(distances))
-    all_monomers = defaultdict(int)
-    for i in range(len(monomers_str) - d + 1):
-        all_monomers[monomers_str[i:i+d]] += 1
-
-    monomers_pattern = max(all_monomers, key=lambda k: all_monomers[k])
-    if 'A' in monomers_pattern:
-        monomers_pattern = monomers_pattern[monomers_pattern.index('A'):] + monomers_pattern[:monomers_pattern.index('A')]
-    #print(monomers_pattern)
-    #monomers_pattern = "ABCDEFGHIJKL"
-    prev_start, prev_end = 0, 0
-    unit_end = 0
-    universal_pattern = r'(' + re.escape(monomers_pattern) + r'|' + re.escape(monomers_pattern[::-1]) + r'){e<=0}'
-    for m in regex.finditer(universal_pattern, monomers_str, regex.ENHANCEMATCH):
-        def reverse_substr(substr, start, end):
-            if start == 0:
-                return substr[end::-1]
-            else:
-                return substr[end:start-1:-1]
-        unit_start, unit_end = m.span()
-        if unit_start - prev_end > 2:
-            if unit_start - prev_end <= 5:
-                unit_structure.append((monomer_structure[prev_end][1], monomer_structure[unit_start - 1][2],
-                                       monomers_str[prev_end:unit_start]))
-            else:
-                wrong_substr = monomers_str[prev_end:unit_start]
-                str_len, i = 1, 0
-                while i < len(wrong_substr) - 1:
-                    while i + str_len < len(wrong_substr) and \
-                            (wrong_substr[i:i + str_len] in monomers_pattern or reverse_substr(wrong_substr, i, i + str_len) in monomers_pattern):
-                        str_len += 1
-                    if wrong_substr[i:i + str_len] not in monomers_pattern and reverse_substr(wrong_substr, i, i + str_len) not in monomers_pattern:
-                        str_len -= 1
-                    if str_len >= 2:
-                        unit_structure.append((monomer_structure[prev_end + i][1],
-                                               monomer_structure[prev_end + i + str_len - 1][2],
-                                               monomers_str[prev_end + i:prev_end + i + str_len]))
-                    i = i + max(1, str_len)
-                    str_len = 1
-                if str_len >= 2:
-                    unit_structure.append((monomer_structure[prev_end + i][1],
-                                           monomer_structure[prev_end + i + str_len - 1][2],
-                                            monomers_str[prev_end + i:prev_end + i + str_len]))
-        elif unit_structure:
-            unit = unit_structure[-1]
-            unit_structure[-1] = (unit[0], monomer_structure[unit_start - 1][2], unit[2] + monomers_str[prev_end:unit_start])
-        unit_structure.append((monomer_structure[unit_start][1], monomer_structure[unit_end - 1][2],
-                                   monomers_str[unit_start:unit_end]))
-        prev_start, prev_end = unit_start, unit_end
-    if unit_end + 2 < len(monomer_structure):
-        unit_structure.append((monomer_structure[unit_end + 1][1], monomer_structure[-1][2],
-                                monomers_str[unit_end + 1:]))
-
+    units = get_units(monomers_str, tmers)
+    if not units:
+        return unit_structure
+    for unit, occ in units:
+        for unit_occ in regex.finditer(unit, monomers_str):
+            unit_start, unit_end = unit_occ.span()
+            unit_structure.append((monomer_structure[unit_start][1], monomer_structure[unit_end-1][2], unit))
+            monomers_str = monomers_str[:unit_start]+'N'*(unit_end-unit_start)+monomers_str[unit_end:]
+    unit_structure.sort(key=lambda x:x[0])
     prev_s, prev_e = 0, 0
     i = 0
     gaps = sorted(list(gaps))
@@ -110,6 +121,6 @@ def analyze_unit_structure(monomer_structure):
         else:
             i += 1
         prev_s, prev_e = unit_start, unit_end
-    return unit_structure, monomers_pattern
+    return unit_structure
 
 
