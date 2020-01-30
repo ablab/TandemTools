@@ -27,7 +27,7 @@ def make_flye():
     print('Flye is compiled successful!')
 
 
-def run_flye(assembly_fname, reads_fname, out_dir, kmers_fname, out_fname, threads):
+def run_flye(assembly, reads_fname, out_dir, threads):
     try:
         make_flye()
     except:
@@ -35,22 +35,22 @@ def run_flye(assembly_fname, reads_fname, out_dir, kmers_fname, out_fname, threa
               % (dirname(ASSEMBLY_BIN), dirname(dirname(ASSEMBLY_BIN))))
         sys.exit(2)
     cmd = [ASSEMBLY_BIN, '--reads', reads_fname,
-           '--asm', assembly_fname, '--kmers', abspath(kmers_fname), '--out-file', abspath(out_fname),
-           '--out-asm', 'draft_assembly.fasta',
-           '--genome-size', str(get_fasta_len(assembly_fname)), '--config', abspath(get_flye_cfg_fname()),
+           '--asm', assembly.fname, '--kmers', abspath(assembly.kmers_fname), '--out-file', abspath(assembly.chains_fname),
+           '--out-asm', 'draft_assembly.fasta', '--max-diff', str(assembly.max_aln_diff),
+           '--genome-size', str(get_fasta_len(assembly.fname)), '--config', abspath(get_flye_cfg_fname()),
            '--log', join(out_dir, 'mapping.log'),
            '--threads', str(threads), '--min-ovlp', str(MIN_CHAIN_LEN), '--kmer', str(KMER_SIZE)]
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
 
 
-def postprocess_chains(assembly_fname, kmers_fname, unique_kmers_fname, chains_fname, bed_fname):
-    rare_kmers = get_kmers(kmers_fname)
-    unique_kmers = get_kmers(unique_kmers_fname)
+def postprocess_chains(assembly):
+    rare_kmers = get_kmers(assembly.kmers_fname)
+    unique_kmers = get_kmers(assembly.solid_kmers_fname)
 
     rare_kmers_by_pos = []
     unique_kmers_by_pos = []
     assembly_seq = ""
-    with open(assembly_fname) as handle:
+    with open(assembly.fname) as handle:
         for record in SeqIO.parse(handle, 'fasta'):
             assembly_len = len(record.seq)
             assembly_seq = str(record.seq)
@@ -66,7 +66,7 @@ def postprocess_chains(assembly_fname, kmers_fname, unique_kmers_fname, chains_f
     read_alignments = defaultdict(list)
     read_lengths = dict()
     read_seeds = defaultdict(lambda: defaultdict(list))
-    with open(chains_fname) as f:
+    with open(assembly.chains_fname) as f:
         #Aln     -a3aa51bb-4cZ 4 23715 24082 +cenX 1894557 1918322 3053970 -1894573 1135315 140 0.27543
         for line in f:
             fs = line.split()
@@ -89,7 +89,7 @@ def postprocess_chains(assembly_fname, kmers_fname, unique_kmers_fname, chains_f
                 read_seeds[read_name[1:]][(ref_start, ref_end, align_start, align_end)].append((read_pos, ref_pos))
 
     num_alignments = 0
-    with open(bed_fname, "w") as f:
+    with open(assembly.bed_fname, "w") as f:
         for read_name, aligns in read_alignments.items():
             max_kmers = 0
             max_len = 0
@@ -164,16 +164,16 @@ def postprocess_chains(assembly_fname, kmers_fname, unique_kmers_fname, chains_f
                 ref_start, ref_end, slugify(read_name), align_start, align_end, read_lengths[read_name]))
 
     print("  Total %d alignments" % num_alignments)
-    print("  Longest chains saved to %s" % bed_fname)
+    print("  Longest chains saved to %s" % assembly.bed_fname)
 
 
 def do(assemblies, reads_fname, out_dir, threads, no_reuse):
     print("")
     print("*********************************")
     print("Read mapping started...")
-    run_parallel(run_flye, [(assembly.fname, reads_fname, out_dir, assembly.kmers_fname, assembly.chains_fname, max(1, threads // len(assemblies)))
+    run_parallel(run_flye, [(assembly, reads_fname, out_dir, max(1, threads // len(assemblies)))
                             for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse], n_jobs=threads)
     for assembly in assemblies:
-        postprocess_chains(assembly.fname, assembly.kmers_fname, assembly.solid_kmers_fname, assembly.chains_fname, assembly.bed_fname)
+        postprocess_chains(assembly)
     print("Read mapping finished")
 

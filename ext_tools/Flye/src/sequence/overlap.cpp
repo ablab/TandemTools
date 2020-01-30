@@ -174,8 +174,7 @@ namespace
         float errRate = 1 - float(matches) / condensedLength;
 
         std::stringstream ss;
-        Logger::get().debug() << "0.25";
-        if (errRate<=0.25) {
+        if (errRate<=0.2) {
             std::string readFlag = qryName.front() == '+' ? "\t0\t" : "\t16\t";
             ss << qryName.substr(1) << readFlag << trgName.substr(1) << "\t" << (trgBegin+1) <<"\t60\t" << cigar_str << "\t*\t0\t0\t" << alnTrg << "\t" << alnQry << "\t*\tNM:i:1\n";
         }
@@ -276,7 +275,7 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec, const std::vector<i
 	const float LG_GAP = 10;
 	const float SM_GAP = 0;
 	const float SM_DIFF = 10;
-	const float MAX_DIFF = 0.10;  // max difference between distances in a read and in an assembly
+	const float MAX_DIFF = Parameters::get().maxDiff;  // max difference between distances in a read and in an assembly
 	const float KMER_BONUS = 10; // bonus for each added non-overlapping k-mer
 
 	outSuggestChimeric = false;

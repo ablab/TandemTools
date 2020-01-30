@@ -25,7 +25,7 @@
 bool parseArgs(int argc, char** argv, std::string& readsFasta,
                std::string& inAssembly, std::string& outFile, std::string& kmersList,
                std::string& outAssembly, std::string& logFile, size_t& genomeSize,
-			   int& kmerSize, bool& debug, size_t& numThreads, int& minOverlap, 
+			   int& kmerSize, float& maxDiff, bool& debug, size_t& numThreads, int& minOverlap,
 			   std::string& configPath, int& minReadLength, bool& unevenCov)
 {
 	auto printUsage = [argv]()
@@ -59,6 +59,7 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 		{"reads", required_argument, 0, 0},
 		{"asm", required_argument, 0, 0},
 		{"kmers", required_argument, 0, 0},
+		{"max-diff", required_argument, 0, 0},
         {"out-file", required_argument, 0, 0},
 		{"out-asm", required_argument, 0, 0},
 		{"genome-size", required_argument, 0, 0},
@@ -81,6 +82,8 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 		case 0:
 			if (!strcmp(longOptions[optionIndex].name, "kmer"))
 				kmerSize = atoi(optarg);
+			else if (!strcmp(longOptions[optionIndex].name, "max-diff"))
+				maxDiff = atof(optarg);
 			else if (!strcmp(longOptions[optionIndex].name, "min-read"))
 				minReadLength = atoi(optarg);
 			else if (!strcmp(longOptions[optionIndex].name, "threads"))
@@ -135,6 +138,7 @@ int main(int argc, char** argv)
 	int minReadLength = 0;
 	size_t genomeSize = 0;
 	int minOverlap = 5000;
+	float maxDiff = 0.15;
 	bool debugging = false;
 	bool unevenCov = false;
 	size_t numThreads = 1;
@@ -147,7 +151,7 @@ int main(int argc, char** argv)
 	std::string configPath;
 
 	if (!parseArgs(argc, argv, readsFasta, inAssembly, outFile, kmersList, outAssembly, logFile, genomeSize,
-				   kmerSize, debugging, numThreads, minOverlap, configPath, 
+				   kmerSize, maxDiff, debugging, numThreads, minOverlap, configPath,
 				   minReadLength, unevenCov)) return 1;
 
 	Logger::get().setDebugging(debugging);
@@ -166,6 +170,7 @@ int main(int argc, char** argv)
 	Parameters::get().kmerSize = kmerSize;
 	Parameters::get().minimumOverlap = minOverlap;
 	Parameters::get().unevenCoverage = unevenCov;
+	Parameters::get().maxDiff = maxDiff;
 	Logger::get().debug() << "Running with k-mer size: " << 
 		Parameters::get().kmerSize; 
 	Logger::get().debug() << "Running with minimum overlap " << minOverlap;

@@ -17,3 +17,5 @@ class Assembly:
         self.chains_fname = join(out_dir, "%s_%s" % (self.name, config.CHAINS_FILENAME))
         self.bed_fname = join(out_dir, "%s_%s" % (self.name, config.ALIGNMENTS_FILENAME))
         self.sam_fname = join(out_dir, "%s_%s" % (self.name, config.SAM_FILENAME))
+        self.max_aln_diff = 0.20
+

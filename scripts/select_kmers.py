@@ -10,7 +10,7 @@ import numpy as np
 
 from config import *
 from scripts.reporting import make_plot
-from scripts.utils import rev_comp, get_ext_tools_dir, get_kmers_positions
+from scripts.utils import rev_comp, get_ext_tools_dir, get_kmers_positions, get_fasta_len
 
 jellyfish_bin = join(get_ext_tools_dir(), "jellyfish", "bin", "jellyfish")
 
@@ -76,7 +76,7 @@ def filter_kmers(reads_fname, kmers):
     return solid_kmers
 
 
-def calculate_thresholds(kmers, ref_kmers_pos, reads_fname):
+def calculate_thresholds(assembly, kmers, ref_kmers_pos, reads_fname):
     all_reads_kmer_pos = defaultdict(dict)
     with open(reads_fname) as handle:
         for record in SeqIO.parse(handle, reads_fname.split('.')[-1]):
@@ -111,6 +111,7 @@ def calculate_thresholds(kmers, ref_kmers_pos, reads_fname):
         prev_kmer, prev_pos = kmer, pos
     iqr_diff = np.percentile(diff_distances, 75) - np.percentile(diff_distances, 25)
     max_diff = np.median(diff_distances) + iqr_diff
+    assembly.max_aln_diff = max(0.1, min(max_diff, 0.25))
 
 
 def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, only_polish=False):
@@ -158,6 +159,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
                     unique_kmers.add(kmer)
 
         freq_in_reads = defaultdict()
+        max_occ_in_assembly = max(1, get_fasta_len(assembly.fname) // 100000)
         hist_values = [0] * (MAX_OCCURRENCES+1)
         rare_hist_values = [0] * (MAX_OCCURRENCES+1)
         missed_kmers = set()
@@ -216,7 +218,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
         solid_kmers = set()
 
         for kmer, occ in freq_in_reads.items():
-            if freq_in_assembly[kmer] <= MAX_KMER_FREQ and real_min_occ <= int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
+            if freq_in_assembly[kmer] <= max_occ_in_assembly and real_min_occ <= int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
                 selected_kmers.add(kmer)
 
         ref_kmers_pos, kmer_by_pos = get_kmers_positions(assembly.fname, selected_kmers)
@@ -235,7 +237,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
                 filtered_kmers.extend(cur_kmers)
         selected_kmers = set(filtered_kmers)
         print("  %d rare k-mers were selected" % len(selected_kmers))
-        calculate_thresholds(selected_kmers, ref_kmers_pos, reads_fname)
+        calculate_thresholds(assembly, selected_kmers, ref_kmers_pos, reads_fname)
 
         plot_fname = join(out_dir, assembly.name + "_selected_kmers.png")
         draw_plot(assembly, selected_kmers, plot_fname, "selected")

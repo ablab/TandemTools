@@ -84,4 +84,5 @@ struct Parameters
 	size_t 	kmerSize;
 	size_t 	numThreads;
 	bool 	unevenCoverage;
+	float   maxDiff;
 };
