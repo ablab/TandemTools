@@ -27,7 +27,7 @@ def draw_bimapping_plot(assembly1, assembly2, out_dir):
     missed_n = 0
     alignments = []
     fig, ax = plt.subplots(figsize=(20, 10))
-    plt.title("Bi-mapping plot", fontsize=40)
+    plt.title("Dot plot", fontsize=40)
     plt.xlabel(assembly1.label, fontsize=32)
     plt.ylabel(assembly2.label, fontsize=32)
 

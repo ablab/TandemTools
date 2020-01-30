@@ -1,16 +1,14 @@
 import os
 import re
 import string
-import subprocess
 import sys
 from bisect import bisect_left, insort
 from collections import deque
 from itertools import islice
-from os.path import abspath, join, dirname, realpath, basename, exists, isdir
+from os.path import abspath, join, dirname, realpath
 
 import numpy as np
 from Bio import SeqIO
-from Bio.Seq import Seq
 
 import config
 from config import *
@@ -75,48 +73,6 @@ def add_suffix(fname, suffix):
         base, ext2 = os.path.splitext(base)
         ext = ext2 + ext
     return base + (('.' + suffix) if suffix else '') + ext
-
-
-def mask_files(assemblies, out_dir, no_reuse=False):
-    repeatmasker_bin = "RepeatMasker"
-    if not exists(repeatmasker_bin):
-        print("Warning: RepeatMasker is not found! TEs will not be masked that can affect k-mer based metrics")
-        for assembly in assemblies:
-            assembly.fname = assembly.raw_fname
-        return
-    rm_dir = join(out_dir, "rm_output")
-    if not isdir(rm_dir):
-        os.makedirs(rm_dir)
-    for assembly in assemblies:
-        masked_fname = join(out_dir, "%s.masked.fa" % assembly.name)
-        if exists(masked_fname) and not no_reuse:
-            assembly.fname = masked_fname
-            continue
-        cmd = [repeatmasker_bin, "-pa", str(MAX_THREADS), assembly.raw_fname, "-dir", rm_dir]
-        subprocess.call(cmd)
-        #28728    0.5  0.7  0.0  T2T_CENX_57-61.1k_590-3860k_221691-2944894  2464731 2470723  (252481) + L1HS
-        te_coords = []
-        if exists(join(rm_dir, basename(assembly.raw_fname) + ".out")):
-            with open(join(rm_dir, basename(assembly.raw_fname) + ".out")) as f:
-                for line in f:
-                    fs = line.split()
-                    if not fs:
-                        continue
-                    if 'LINE' in fs[10] and int(fs[6]) - int(fs[5]) >= 500 and float(fs[1]) < 10:  #TODO: CHANGE
-                        te_coords.append((int(fs[5]), int(fs[6])))
-                    if 'Alu' in fs[10] and int(fs[6]) - int(fs[5]) >= 200 and float(fs[1]) < 10:
-                        te_coords.append((int(fs[5]), int(fs[6])))
-
-        with open(assembly.raw_fname) as handle:
-            for record in SeqIO.parse(handle, 'fasta'):
-                seq = str(record.seq).upper()
-                for coord in te_coords:
-                    seq = seq[:coord[0]] + 'N' * (coord[1] - coord[0]) + seq[coord[1]:]
-                record.seq = Seq(seq)
-                with open(masked_fname, "w") as handle:
-                    SeqIO.write(record, handle, "fasta")
-                break
-        assembly.fname = masked_fname
 
 
 def get_flye_cfg_fname():

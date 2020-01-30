@@ -209,7 +209,8 @@ void Extender::assembleDisjointigs()
 		//getting overlaps without caching first - so we don't
 		//store overlap information for many trashy reads
 		//that won't result into disjointig extension
-		auto startOvlps = _ovlpContainer.quickSeqOverlaps(startRead, 
+		std::vector<int> kmerPositions;
+		auto startOvlps = _ovlpContainer.quickSeqOverlaps(startRead, kmerPositions,
 														  /*max overlaps*/ 100);
 		std::vector<OverlapRange> revOverlaps;
 		revOverlaps.reserve(startOvlps.size());

@@ -426,6 +426,7 @@ void VertexIndex::buildIndex(int minCoverage, std::string& kmersList)
 		//int32_t seqLen = _seqContainer.seqLen(readId);
 		for (auto kmerPos : IterKmers(_seqContainer.getSeq(readId)))
 		{
+            if (!_kmerIndex.contains(kmerPos.kmer)) continue;
 			if (_sampleRate > 1) //subsampling
 			{
 				if (--nextKmerPos > 0) continue;

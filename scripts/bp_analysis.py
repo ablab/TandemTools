@@ -1,10 +1,11 @@
 from os.path import join
 
 import numpy as np
+from Bio import SeqIO
 
 from config import *
 from scripts.reporting import make_plot
-from scripts.utils import get_fasta_len
+from scripts.utils import get_fasta_len, get_kmers, rev_comp
 
 
 def do(assemblies, out_dir):
@@ -21,6 +22,19 @@ def do(assemblies, out_dir):
         coverage = [0] * assembly_len
         ideal_coverage = [0] * assembly_len
         tips = [0] * assembly_len
+
+        rare_kmers = get_kmers(assembly.kmers_fname)
+        with open(assembly.fname) as handle:
+            for record in SeqIO.parse(handle, 'fasta'):
+                assembly_len = len(record.seq)
+                assembly_seq = str(record.seq)
+                rare_kmers_by_pos = [0] * assembly_len
+                for i in range(len(assembly_seq) - KMER_SIZE + 1):
+                    kmer = assembly_seq[i:i + KMER_SIZE]
+                    if kmer in rare_kmers or rev_comp(kmer) in rare_kmers:
+                        rare_kmers_by_pos[i] = 1
+
+        used_reads = set()
         with open(assembly.bed_fname) as f:
             for line in f:
                 fs = line.split()
@@ -32,8 +46,17 @@ def do(assemblies, out_dir):
                 tips[ref_e-1] += 1
                 starts[ref_s] += 1
                 ends[ref_e - 1] += 1
-                ideal_starts[max(0,ref_s-align_start)] += 1
-                ideal_ends[min(assembly_len-1,ref_e+read_len - align_end-1)] += 1
+                if read_name in used_reads:
+                    continue
+                if sum(rare_kmers_by_pos[ref_s-align_start:ref_s]) > MAX_MISSED_KMERS:
+                    ideal_starts[max(0,ref_s-align_start)] += 1
+                else:
+                    ideal_starts[ref_s] += 1
+                if sum(rare_kmers_by_pos[ref_e:ref_e+read_len]) > MAX_MISSED_KMERS:
+                    ideal_ends[min(assembly_len-1,ref_e+read_len - align_end-1)] += 1
+                else:
+                    ideal_ends[ref_e] += 1
+                used_reads.add(read_name)
 
         cur_cov = 0
         ideal_cur_cov = 0

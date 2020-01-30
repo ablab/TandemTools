@@ -33,7 +33,7 @@ def make_plot(plot_fname, plot_type, plot_title, xlabel, ylabel, list_vals=None,
         ax.bar(range(len(bar_values)), bar_values, color=plot_color, align='edge')
         max_plot_x = max(max_plot_x, len(bar_values))
     if not (plot_values is None):
-        ax.plot(range(len(plot_values)), plot_values, color=plot_color)
+        ax.fill_between(range(len(plot_values)), plot_values, color=plot_color)
         max_plot_x = max(max_plot_x, len(plot_values))
     if not (fill_values is None):
         ax.fill_between(range(len(fill_values)), fill_values, step="mid", color=fill_color)

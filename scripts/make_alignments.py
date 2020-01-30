@@ -9,7 +9,7 @@ from slugify import slugify
 
 from config import *
 from ext_tools.Flye.flye.polishing.polish import ASSEMBLY_BIN
-from scripts.utils import get_fasta_len, get_flye_cfg_fname, rev_comp, get_kmers, run_parallel
+from scripts.utils import get_fasta_len, get_flye_cfg_fname, rev_comp, get_kmers, run_parallel, get_kmers_positions
 
 
 def make_flye():
@@ -43,18 +43,23 @@ def run_flye(assembly_fname, reads_fname, out_dir, kmers_fname, out_fname, threa
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
 
 
-def postprocess_chains(assembly_fname, kmers_fname, chains_fname, bed_fname):
-    unique_kmers = get_kmers(kmers_fname)
+def postprocess_chains(assembly_fname, kmers_fname, unique_kmers_fname, chains_fname, bed_fname):
+    rare_kmers = get_kmers(kmers_fname)
+    unique_kmers = get_kmers(unique_kmers_fname)
 
+    rare_kmers_by_pos = []
     unique_kmers_by_pos = []
     assembly_seq = ""
     with open(assembly_fname) as handle:
         for record in SeqIO.parse(handle, 'fasta'):
             assembly_len = len(record.seq)
             assembly_seq = str(record.seq)
+            rare_kmers_by_pos = [0] * assembly_len
             unique_kmers_by_pos = [0] * assembly_len
             for i in range(len(assembly_seq) - KMER_SIZE + 1):
                 kmer = assembly_seq[i:i + KMER_SIZE]
+                if kmer in rare_kmers or rev_comp(kmer) in rare_kmers:
+                    rare_kmers_by_pos[i] = 1
                 if kmer in unique_kmers or rev_comp(kmer) in unique_kmers:
                     unique_kmers_by_pos[i] = 1
 
@@ -92,7 +97,6 @@ def postprocess_chains(assembly_fname, kmers_fname, chains_fname, bed_fname):
             for align in aligns:
                 seeds = read_seeds[read_name][align]
                 seeds.sort(key=lambda x: x[1])
-                seeds = seeds[1:-1]
                 best_chain = None
                 best_kmers = 0
                 best_len = 0
@@ -103,7 +107,7 @@ def postprocess_chains(assembly_fname, kmers_fname, chains_fname, bed_fname):
                         read_pos, ref_pos = seed
                         if ref_pos - prev_pos >= KMER_SIZE or not unique_seeds:
                             unique_seeds.append((read_pos, ref_pos))
-                        prev_pos = ref_pos
+                            prev_pos = ref_pos
                     unique_seeds.append(seeds[-1])
                     seeds = unique_seeds
                     new_chains = []
@@ -111,7 +115,7 @@ def postprocess_chains(assembly_fname, kmers_fname, chains_fname, bed_fname):
                     for i in range(1, len(seeds)):
                         if seeds[i][1] - seeds[i-1][1] >= MAX_REF_GAP:
                             gap_s, gap_e = seeds[i-1][1]+KMER_SIZE, seeds[i][1]
-                            if sum(unique_kmers_by_pos[gap_s:gap_e]) > MAX_MISSED_KMERS:
+                            if sum(rare_kmers_by_pos[gap_s:gap_e]) > MAX_MISSED_KMERS:
                                 breakpoints.append(i-1)
                                 #print(read_name,gap_s,gap_e)
                     if breakpoints:
@@ -140,7 +144,7 @@ def postprocess_chains(assembly_fname, kmers_fname, chains_fname, bed_fname):
                             best_len = total_len
                             best_chain = chains
                     else:
-                        best_kmers = len(seeds)
+                        best_kmers = len(seeds) if len(seeds) > MIN_CHAIN_KMERS/2 else 0
                         best_len = seeds[-1][1] - seeds[0][1]
                         best_chain = [[seeds[0][1], seeds[-1][1], seeds[0][0], seeds[-1][0]]]
 
@@ -170,6 +174,6 @@ def do(assemblies, reads_fname, out_dir, threads, no_reuse):
     run_parallel(run_flye, [(assembly.fname, reads_fname, out_dir, assembly.kmers_fname, assembly.chains_fname, max(1, threads // len(assemblies)))
                             for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse], n_jobs=threads)
     for assembly in assemblies:
-        postprocess_chains(assembly.fname, assembly.kmers_fname, assembly.chains_fname, assembly.bed_fname)
+        postprocess_chains(assembly.fname, assembly.kmers_fname, assembly.solid_kmers_fname, assembly.chains_fname, assembly.bed_fname)
     print("Read mapping finished")
 

@@ -17,6 +17,17 @@
 #include "../common/progress_bar.h"
 
 
+struct KmerMatch
+{
+    KmerMatch(int32_t cur = 0, int32_t ext = 0, int32_t bonus = 0,
+              FastaRecord::Id extId = FastaRecord::ID_NONE):
+        curPos(cur), extPos(ext), bonus(bonus), extId(extId) {}
+    int32_t curPos;
+    int32_t extPos;
+    int32_t bonus;
+    FastaRecord::Id extId;
+};
+
 struct OverlapRange
 {
 	OverlapRange(FastaRecord::Id curId = FastaRecord::ID_NONE, 
@@ -42,12 +53,12 @@ struct OverlapRange
 
 		for (auto& posPair : rev.kmerMatches) 
 		{
-			std::swap(posPair.first, posPair.second);
+			std::swap(posPair.curPos, posPair.extPos);
 		}
 		std::sort(rev.kmerMatches.begin(), rev.kmerMatches.end(),
-				  [](const std::pair<int32_t, int32_t>& p1,
-				  	 const std::pair<int32_t, int32_t>& p2)
-				  	 {return p1.first < p2.first;});
+			  [](const KmerMatch& k1, const KmerMatch& k2)
+			  {return k1.extId != k2.extId ? k1.extId < k2.extId :
+			  								 k1.curPos < k2.curPos;});
 
 		return rev;
 	}
@@ -72,8 +83,8 @@ struct OverlapRange
 
 		for (auto& posPair : comp.kmerMatches) 
 		{
-			posPair.first = curLen - posPair.first - 1, 
-			posPair.second = extLen - posPair.second - 1;
+			posPair.curPos = curLen - posPair.curPos - 1,
+			posPair.extPos = extLen - posPair.extPos - 1;
 		}
 		std::reverse(comp.kmerMatches.begin(), comp.kmerMatches.end());
 
@@ -94,9 +105,9 @@ struct OverlapRange
 		}
 		else
 		{
-			auto cmpFirst = [] (const std::pair<int32_t, int32_t>& pair,
+			auto cmpFirst = [] (const KmerMatch& k1,
 							  	int32_t value)
-								{return pair.first < value;};
+								{return k1.curPos < value;};
 			size_t i = std::lower_bound(kmerMatches.begin(), kmerMatches.end(),
 										curPos, cmpFirst) - kmerMatches.begin();
 			if(i == 0 || i == kmerMatches.size()) 
@@ -104,15 +115,15 @@ struct OverlapRange
 				throw std::runtime_error("Error in overlap projection");
 			}
 
-			int32_t curInt = kmerMatches[i].first -
-							 kmerMatches[i - 1].first;
-			int32_t extInt = kmerMatches[i].second -
-							 kmerMatches[i - 1].second;
+			int32_t curInt = kmerMatches[i].curPos -
+							 kmerMatches[i - 1].curPos;
+			int32_t extInt = kmerMatches[i].extPos -
+							 kmerMatches[i - 1].extPos;
 			float lengthRatio = (float)extInt / curInt;
-			int32_t projectedPos = kmerMatches[i - 1].second +
-							float(curPos - kmerMatches[i - 1].first) * lengthRatio;
-			return std::max(kmerMatches[i - 1].second,
-							std::min(projectedPos, kmerMatches[i].second));
+			int32_t projectedPos = kmerMatches[i - 1].extPos +
+							float(curPos - kmerMatches[i - 1].curPos) * lengthRatio;
+			return std::max(kmerMatches[i - 1].extPos,
+							std::min(projectedPos, kmerMatches[i].curPos));
 		}
 	}
 
@@ -189,7 +200,7 @@ struct OverlapRange
 
 	int32_t score;
 	float   seqDivergence;
-	std::vector<std::pair<int32_t, int32_t>> kmerMatches;
+	std::vector<KmerMatch> kmerMatches;
 };
 
 
@@ -252,7 +263,8 @@ public:
 
 private:
 	std::vector<OverlapRange> 
-	getSeqOverlaps(const FastaRecord& fastaRec, 
+	getSeqOverlaps(const FastaRecord& fastaRec,
+	               const std::vector<int>& kmerPositions,
 				   bool& outSuggestChiemeric,
 				   OvlpDivStats& divergenceStats,
 				   int maxOverlaps) const;
@@ -320,12 +332,13 @@ public:
 	bool hasSelfOverlaps(FastaRecord::Id seqId);
 
 	//finds and returns overlaps - no caching is done	
-	std::vector<OverlapRange> quickSeqOverlaps(FastaRecord::Id readId, 
+	std::vector<OverlapRange> quickSeqOverlaps(FastaRecord::Id readId,
+                                               std::vector<int> kmerPositions,
 											   int maxOverlaps=0);
 
 	size_t indexSize() {return _indexSize;}
 
-	void estimateOverlaperParameters(std::string& outFile);
+	void estimateOverlaperParameters(const std::vector<int>& kmerPositions,std::string& outFile);
 
 	void setRelativeDivergenceThreshold(float relThreshold);
 

@@ -17,7 +17,7 @@ profile: LDFLAGS +=  -lz -L${MINIMAP2_DIR} -lminimap2
 profile: release
 
 release: CXXFLAGS += -O3 -DNDEBUG
-release: flye-repeat flye-polish flye-assemble flye-contigger
+release: flye-polish flye-assemble
 
 SANITIZE_FLAGS += -D_GLIBCXX_SANITIZE_VECTOR -U_FORTIFY_SOURCE -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined
 #SANITIZE_FLAGS += -fsanitize=thread -fsanitize=leak -fsanitize=undefined

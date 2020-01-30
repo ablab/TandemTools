@@ -241,6 +241,29 @@ int main(int argc, char** argv)
 	Logger::get().debug() << "Peak RAM usage: " 
 		<< getPeakRSS() / 1024 / 1024 / 1024 << " Gb";
 
+	std::vector<int> kmerPositions;
+
+	int64_t assemblyLength = 0;
+	for (auto& seq : assemblyContainer.iterSeqs())
+	{
+		assemblyLength += seq.sequence.length();
+	}
+	kmerPositions.assign(assemblyLength, 0);
+
+	for (auto& seq : assemblyContainer.iterSeqs())
+	{
+	    size_t numKmers = 0;
+	    for (auto kmerPos : IterKmers(seq.sequence))
+		{
+		    if (vertexIndex.kmerFreq(kmerPos.kmer)) {
+                Logger::get().debug() << "pos " << kmerPos.position << " freq " << vertexIndex.kmerFreq(kmerPos.kmer);
+                //for (const auto& extReadPos : vertexIndex.iterKmerPos(itKmer.second))
+                numKmers++;
+                kmerPositions[kmerPos.position] = numKmers;
+		    }
+		}
+	}
+
 	//int maxOverlapsNum = !Parameters::get().unevenCoverage ? 5 * coverage : 0;
 	OverlapDetector ovlp(assemblyContainer, vertexIndex,
 						 (int)Config::get("maximum_jump"), 
@@ -253,7 +276,7 @@ int main(int argc, char** argv)
 						 /* bad end adjustment*/ 0.0f,
 						 /* nucl alignent*/ true);
 	OverlapContainer readOverlaps(ovlp, readsContainer);
-	readOverlaps.estimateOverlaperParameters(outFile);
+	readOverlaps.estimateOverlaperParameters(kmerPositions, outFile);
 	readOverlaps.setRelativeDivergenceThreshold(
 		(float)Config::get("assemble_ovlp_relative_divergence"));
 
