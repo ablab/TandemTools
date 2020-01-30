@@ -1,8 +1,9 @@
+import os
 import random
 import subprocess
 import sys
 from collections import defaultdict
-from os.path import join, exists, basename
+from os.path import join, exists, basename, dirname
 
 from Bio import SeqIO
 import numpy as np
@@ -12,6 +13,30 @@ from scripts.reporting import make_plot
 from scripts.utils import rev_comp, get_ext_tools_dir, get_kmers_positions
 
 jellyfish_bin = join(get_ext_tools_dir(), "jellyfish", "bin", "jellyfish")
+
+
+def make_jellyfish():
+    if exists(jellyfish_bin):
+        return
+    jellyfish_bin_dir = dirname(jellyfish_bin)
+    jellyfish_dir = dirname(jellyfish_bin_dir)
+    if not exists(jellyfish_bin_dir):
+        os.makedirs(jellyfish_bin_dir)
+
+    print('Compiling Jellyfish...')
+    cwd = os.getcwd()
+    os.chdir(jellyfish_dir)
+    return_code = subprocess.call(['./configure', '--prefix=%s' % jellyfish_dir],
+                                  stdout=open(join(jellyfish_dir, "make.log"),"w"),
+                                  stderr=open(join(jellyfish_dir, "make.err"),"w"))
+    if return_code != 0:
+        raise
+    os.chdir(cwd)
+    return_code = subprocess.call(['make', '-C', jellyfish_dir],
+                                  stdout=open(join(jellyfish_dir, "make.log"),"w"), stderr=open(join(jellyfish_dir, "make.err"),"w"))
+    if return_code != 0:
+        raise
+    print('Jellyfish is compiled successful!')
 
 
 def draw_plot(assembly, kmers, plot_fname, kmers_type):
@@ -86,7 +111,6 @@ def calculate_thresholds(kmers, ref_kmers_pos, reads_fname):
         prev_kmer, prev_pos = kmer, pos
     iqr_diff = np.percentile(diff_distances, 75) - np.percentile(diff_distances, 25)
     max_diff = np.median(diff_distances) + iqr_diff
-    #print(max_diff)
 
 
 def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, only_polish=False):
@@ -94,6 +118,12 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
     print("*********************************")
     print("K-mers selection started...")
 
+    try:
+        make_jellyfish()
+    except:
+        print('Failed to compile Jellyfish! Please try to compile it manually in %s'
+              % dirname(dirname(jellyfish_bin)))
+        sys.exit(2)
     for assembly in assemblies:
         print("")
         if exists(assembly.solid_kmers_fname) and not no_reuse:
