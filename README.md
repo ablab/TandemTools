@@ -5,10 +5,9 @@
 
 ## Introduction
 
-**TandemQUAST** is a tool for evaluating and improving assemblies of extra-long tandem repeats (ETR).
-**TandemMapper** is a tool for mapping long error-prone reads to ETRs.
+**TandemTools** package includes **TandemQUAST** tool for evaluating and improving assemblies of extra-long tandem repeats (ETR) and **TandemMapper** tool for mapping long error-prone reads to ETRs.
 
-Note: tandemQUAST and tandemMapper are designed specifically for ETR (range in length from hundreds of thousands to millions of nucleotides). It is strongly not recommended to run tandemQUAST or tandemMapper on shorter TRs.
+Note: TandemTools is designed specifically for ETR (range in length from hundreds of thousands to millions of nucleotides). It is strongly not recommended to run TandemTools on shorter TRs.
 
 
 ## Installation

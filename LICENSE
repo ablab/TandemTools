@@ -1,11 +1,11 @@
-tandemQUAST
-Copyright (c) 2019 Saint Petersburg State University
+TandemTools
+Copyright (c) 2020 Saint Petersburg State University
 
-TandemQUAST is free software; you can redistribute it and/or modify
+TandemTools is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License, Version 2,
 dated June 1991, as published by the Free Software Foundation.
 
-TandemQUAST is distributed in the hope that it will be useful, but
+TandemTools is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
@@ -17,28 +17,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 -------------------------------------------------------------------------------
 
-tandemMapper
-Copyright (c) 2019 Saint Petersburg State University
+Third-party tools used into TandemTools:
 
-TandemMapper is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License, Version 2,
-dated June 1991, as published by the Free Software Foundation.
-
-TandemMapper is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-General Public License for more details.
-
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
-
--------------------------------------------------------------------------------
-
-Third-party tools used into tandemQUAST and tandemMapper:
-
-1. TandemMapper uses Flye for read mapping and tandemQUAST uses in polishing module.
+1. TandemTools uses Flye in mapping module and in polishing module.
 
 For more details about Flye please refer to
 https://github.com/fenderglass/Flye/ and to the following paper:
@@ -51,6 +32,11 @@ Nature Biotechnology, 2019 doi:10.1038/s41587-019-0072-8
 For more details about StringDecomposer please refer to
 https://github.com/TanyaDvorkina/stringdecomposer
 
+3. TandemTools uses Jellyfish for k-mer counting.
+
+For more details about Jellyfish please refer to
+Guillaume Marcais and Carl Kingsford, A fast, lock-free approach for efficient parallel counting of occurrences of k-mers.
+Bioinformatics (2011) 27(6): 764-770 doi:10.1093/bioinformatics/btr011
 
 -------------------------------------------------------------------------------
 
