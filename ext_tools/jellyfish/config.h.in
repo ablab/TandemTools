@@ -1,0 +1,197 @@
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Define to 1 to support Advanced Bit Manipulation */
+#undef HAVE_ABM
+
+/* Define to 1 to support Multi-Precision Add-Carry Instruction Extensions */
+#undef HAVE_ADX
+
+/* Define to 1 to support Advanced Encryption Standard New Instruction Set
+   (AES-NI) */
+#undef HAVE_AES
+
+/* Define to 1 if you have the `aligned_alloc' function. */
+#undef HAVE_ALIGNED_ALLOC
+
+/* Support Altivec instructions */
+#undef HAVE_ALTIVEC
+
+/* Define to 1 to support Advanced Vector Extensions */
+#undef HAVE_AVX
+
+/* Define to 1 to support Advanced Vector Extensions 2 */
+#undef HAVE_AVX2
+
+/* Define to 1 to support AVX-512 Byte and Word Instructions */
+#undef HAVE_AVX512_BW
+
+/* Define to 1 to support AVX-512 Conflict Detection Instructions */
+#undef HAVE_AVX512_CD
+
+/* Define to 1 to support AVX-512 Doubleword and Quadword Instructions */
+#undef HAVE_AVX512_DQ
+
+/* Define to 1 to support AVX-512 Exponential & Reciprocal Instructions */
+#undef HAVE_AVX512_ER
+
+/* Define to 1 to support AVX-512 Foundation Extensions */
+#undef HAVE_AVX512_F
+
+/* Define to 1 to support AVX-512 Integer Fused Multiply Add Instructions */
+#undef HAVE_AVX512_IFMA
+
+/* Define to 1 to support AVX-512 Conflict Prefetch Instructions */
+#undef HAVE_AVX512_PF
+
+/* Define to 1 to support AVX-512 Vector Byte Manipulation Instructions */
+#undef HAVE_AVX512_VBMI
+
+/* Define to 1 to support AVX-512 Vector Length Extensions */
+#undef HAVE_AVX512_VL
+
+/* Define to 1 to support Bit Manipulation Instruction Set 1 */
+#undef HAVE_BMI1
+
+/* Define to 1 to support Bit Manipulation Instruction Set 2 */
+#undef HAVE_BMI2
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
+/* Define to 1 if you have the <execinfo.h> header file. */
+#undef HAVE_EXECINFO_H
+
+/* Define to 1 if you have the <ext/stdio_filebuf.h> header file. */
+#undef HAVE_EXT_STDIO_FILEBUF_H
+
+/* Define to 1 to support Fused Multiply-Add Extensions 3 */
+#undef HAVE_FMA3
+
+/* Define to 1 to support Fused Multiply-Add Extensions 4 */
+#undef HAVE_FMA4
+
+/* Defined if htslib is available */
+#undef HAVE_HTSLIB
+
+/* Define if type __int128 is supported */
+#undef HAVE_INT128
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 to support Multimedia Extensions */
+#undef HAVE_MMX
+
+/* Define to 1 to support Memory Protection Extensions */
+#undef HAVE_MPX
+
+/* Used to find executable path on MacOS X */
+#undef HAVE_NSGETEXECUTABLEPATH
+
+/* Define if numeric limits specialization exists for __int128 */
+#undef HAVE_NUMERIC_LIMITS128
+
+/* Define to 1 if you have the `posix_memalign' function. */
+#undef HAVE_POSIX_MEMALIGN
+
+/* Define to 1 to support Prefetch Vector Data Into Caches WT1 */
+#undef HAVE_PREFETCHWT1
+
+/* If available, contains the Python version number currently in use. */
+#undef HAVE_PYTHON
+
+/* Define to 1 to support Digital Random Number Generator */
+#undef HAVE_RDRND
+
+/* Define to 1 to support Secure Hash Algorithm Extension */
+#undef HAVE_SHA
+
+/* Define if siginfo_t.si_int exists */
+#undef HAVE_SI_INT
+
+/* Define to 1 to support Streaming SIMD Extensions */
+#undef HAVE_SSE
+
+/* Define to 1 to support Streaming SIMD Extensions */
+#undef HAVE_SSE2
+
+/* Define to 1 to support Streaming SIMD Extensions 3 */
+#undef HAVE_SSE3
+
+/* Define to 1 to support Streaming SIMD Extensions 4.1 */
+#undef HAVE_SSE4_1
+
+/* Define to 1 to support Streaming SIMD Extensions 4.2 */
+#undef HAVE_SSE4_2
+
+/* Define to 1 to support AMD Streaming SIMD Extensions 4a */
+#undef HAVE_SSE4a
+
+/* Define to 1 to support Supplemental Streaming SIMD Extensions 3 */
+#undef HAVE_SSSE3
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/syscall.h> header file. */
+#undef HAVE_SYS_SYSCALL_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define is using Valgrind */
+#undef HAVE_VALGRIND
+
+/* Support VSX instructions */
+#undef HAVE_VSX
+
+/* Define to 1 to support eXtended Operations Extensions */
+#undef HAVE_XOP
+
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
+#undef LT_OBJDIR
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* Version number of package */
+#undef VERSION

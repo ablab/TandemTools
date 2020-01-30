@@ -13,6 +13,7 @@ from scripts.utils import rev_comp, get_ext_tools_dir, get_kmers_positions
 
 jellyfish_bin = join(get_ext_tools_dir(), "jellyfish", "bin", "jellyfish")
 
+
 def draw_plot(assembly, kmers, plot_fname, kmers_type):
     unique_kmer_pos = []
     assembly_len = 0
@@ -103,7 +104,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
         readkmers_fname = join(out_dir, basename(reads_fname)+".kmers.txt")
         if not exists(readkmers_fname) or no_reuse:
             cmd = [jellyfish_bin, "count", "-m%d" % KMER_SIZE, "-s500M", "-C", "-t%d" % MAX_THREADS, "-o", readkmers_db, reads_fname]
-            subprocess.call(cmd)
+            subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
             cmd = [jellyfish_bin, "dump", readkmers_db, "-o", readkmers_fname]
             subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
 
