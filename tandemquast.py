@@ -26,7 +26,7 @@ def set_params(fnames, threads):
         config.BP_WINDOW_SIZE = 500
     else:
         config.BP_WINDOW_SIZE = 1000
-    config.MOVING_AVG_WINDOW_SIZE = min(200, max(20, assembly_len//config.BP_WINDOW_SIZE//20))
+    config.MOVING_AVG_WINDOW_SIZE = min(20, max(20, assembly_len//config.BP_WINDOW_SIZE//20))
     config.MAX_THREADS = threads
 
 
