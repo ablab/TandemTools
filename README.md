@@ -48,7 +48,7 @@ Optional arguments:
 
 ## Output files
 
-The following files are contained in <output_dir> directory (specified by `-o`) and include results 
+The following files are contained in `<output_dir>` directory (specified by `-o`) and include results 
 for all input assemblies. See TandemQUAST paper for the detailed explanation of different metrics.
 
 ### TandemMapper output
@@ -85,7 +85,7 @@ The peaks of coverage for one assembly suggest that this assembly is more "suppo
 
 #### Centromeric metrics:
 
-`<output_dir>/report/*_monomer_lengths.html` - an interactive HTMl-page showing 
+`<output_dir>/report/*_monomer_lengths.html` - an interactive HTML-page showing 
 monomer length distribution along the assembly.
 
 `<output_dir>/report/*_units.txt` - file with a list of HOR units.
