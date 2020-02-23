@@ -34,7 +34,7 @@ Optional arguments:
 ```
 
 ```shell
-tandemmapper.py [options] -r <reads_file> -o <output_dir> <assembly_file1> <assembly_file2>
+tandemmapper.py [options] --nano/--pacbio <reads_file> -o <output_dir> <assembly_file1> <assembly_file2>
 
 Required arguments:
     --nano      PATH                    File with Oxford Nanopore reads used for ETR assembly 
@@ -54,11 +54,12 @@ for all input assemblies. See TandemQUAST paper for the detailed explanation of 
 ### TandemMapper output
 
 `<output_dir>/*_alignment.bed` - TandemMapper alignments in BED format
+
 `<output_dir>/*_alignment.sam` - TandemMapper alignments in SAM format
 
 ### TandemQUAST output
 
-####Basic metrics:
+#### Basic metrics:
 
 `<output_dir>/report/*_coverage.png` - plot of read coverage.
 
@@ -75,14 +76,14 @@ suggest a low base-level quality in the region, caused by lack of polishing or a
 
 `<output_dir>/report/*_kmer_stats.txt` - distribution of different types of unique k-mers in TXT format.
 
-####Pairwise comparison:
+#### Pairwise comparison:
 
 `<output_dir>/report/*_vs_*.png` - a dot plot comparing mappings for two assemblies
 
 `<output_dir>/report/discordance_*_vs_*.png` - a discordance plot showing coverage of two assemblies by discordant reads.
 The peaks of coverage for one assembly suggest that this assembly is more "supported" by reads in this region than other assembly. 
 
-####Centromeric metrics:
+#### Centromeric metrics:
 
 `<output_dir>/report/*_monomer_lengths.html` - an interactive HTMl-page showing 
 monomer length distribution along the assembly.
