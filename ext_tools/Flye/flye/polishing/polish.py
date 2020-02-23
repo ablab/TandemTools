@@ -69,7 +69,7 @@ def polish(contig_seqs, read_seqs, work_dir, kmers_fname, genome_size, num_threa
     contig_lengths = None
     coverage_stats = None
 
-    logger.info(    "Running unique k-mer mapper")
+    logger.info(    "Running TandemMapper")
     raw_alignment_file = os.path.join(work_dir, "aln_%d.sam" %i)
     alignment_file = os.path.join(work_dir, "aln_%d.sort.sam" %i)
     cmd = "%s " \

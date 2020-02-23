@@ -2,6 +2,7 @@ import os
 import re
 import string
 import sys
+from joblib import Parallel, delayed
 from bisect import bisect_left, insort
 from collections import deque
 from itertools import islice
@@ -42,15 +43,33 @@ def is_python2():
     return sys.version_info[0] < 3
 
 
+def compress_homopolymers(assemblies):
+    for assembly in assemblies:
+        real_coords = dict()
+        with open(assembly.fname) as handle:
+            with open(assembly.compressed_fname, "w") as out:
+                for record in SeqIO.parse(handle, 'fasta'):
+                    seq = record.seq
+                compress_seq = ''
+                prev_s = ''
+                cur_i = 0
+                for i,x in enumerate(seq):
+                    if x == prev_s:
+                        real_coords[i] = cur_i
+                        continue
+                    compress_seq+= x
+                    real_coords[cur_i] = i
+                    prev_s = x
+                    cur_i+=1
+                assembly.real_coords = real_coords
+                out.write(">" + str(record.id) + "\n")
+                out.write(compress_seq + "\n")
+
+
 def run_parallel(_fn, fn_args, n_jobs=None, filter_results=False):
     n_jobs = n_jobs or config.MAX_THREADS
     parallel_args = {'n_jobs': n_jobs}
-    import joblib
-    from joblib import Parallel, delayed
     try:
-        # starting from joblib 0.10 the default backend has changed to 'loky' which causes QUAST crashes,
-        # since it uses default values in qconfig module. So, we explicitly require 'multiprocessing' here.
-        # Note that Parallel doesn't have 'require' argument in joblib 0.9 and earlier.
         new_style_parallel_args = {'backend': 'multiprocessing'}
         Parallel(**new_style_parallel_args)
         parallel_args.update(new_style_parallel_args)

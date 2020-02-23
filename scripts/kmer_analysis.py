@@ -1,4 +1,5 @@
 from collections import defaultdict
+from itertools import groupby
 from os.path import exists, join
 
 from Bio import SeqIO
@@ -82,6 +83,8 @@ def get_kmers_read_pos(assembly, reads_fname, solid_kmers=None):
                 read_kmer_pos[read_name] = dict()
                 for i in range(read_len - KMER_SIZE+1):
                     kmer = str(read_seq[i:i + KMER_SIZE])
+                    if platform == "pacbio":
+                        kmer = ''.join(x[0] for x in groupby(list(kmer)))
                     if kmer in solid_kmers:
                         read_kmer_pos[read_name][kmer] = i
                     elif rev_comp(kmer) in solid_kmers:

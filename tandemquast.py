@@ -32,17 +32,29 @@ def set_params(fnames, threads):
 
 @click.command()
 @click.argument('assembly_fnames', type=click.Path(exists=True), nargs=-1)
-@click.option('-r', 'reads_fname', type=click.Path(exists=True), required=True, help='File with PacBio CLR or ONT reads')
+@click.option('--nano', 'nano_reads_fname', type=click.Path(exists=True), help='File with ONT reads')
+@click.option('--pacbio', 'pacbio_reads_fname', type=click.Path(exists=True), help='File with PacBio CLR reads')
 @click.option('-o', 'out_dir',  type=click.Path(), required=True, help='Output folder')
 @click.option('-t', 'threads', type=click.INT, help='Threads', default=config.MAX_THREADS)
 @click.option('-m', 'monomers_fname', type=click.Path(), help='Monomer sequence')
 @click.option('-l', 'labels', help='Comma separated list of assembly labels')
-@click.option('--hi-fi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads')
+@click.option('--hifi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads')
 @click.option('--only-polish', 'only_polish', is_flag=True, help='Run polishing only')
 @click.option('-f', '--no-reuse', 'no_reuse', is_flag=True, help='Do not reuse old files')
-def main(assembly_fnames, labels, reads_fname, hifi_reads_fname, out_dir, threads, monomers_fname, no_reuse, only_polish):
+def main(assembly_fnames, labels, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname, out_dir, threads, monomers_fname, no_reuse, only_polish):
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("%s TandemQUAST started" % date)
+
+    if nano_reads_fname and pacbio_reads_fname or (not nano_reads_fname and not pacbio_reads_fname):
+        print("ERROR! You should specify ONE path to a file with reads (ONT or Pacbio CLR reads)")
+        sys.exit(2)
+
+    if nano_reads_fname:
+        reads_fname = nano_reads_fname
+        config.platform = "nano"
+    else:
+        reads_fname = pacbio_reads_fname
+        config.platfrom = "pacbio"
 
     if not assembly_fnames:
         print("ERROR! You should specify at least one assembly file.")
@@ -68,23 +80,23 @@ def main(assembly_fnames, labels, reads_fname, hifi_reads_fname, out_dir, thread
 
     assemblies = [Assembly(assembly_fnames[i], name=list_labels[i], out_dir=out_dir) for i in range(len(assembly_fnames))]
     # -----SELECT KMERS----
-    from scripts import select_kmers, coverage_test, bp_analysis, kmer_analysis, pairwise_comparison, discordance, monomer_analysis
+    from scripts import coverage_test, bp_analysis, kmer_analysis, pairwise_comparison, discordance, monomer_analysis
 
     if only_polish:
-        polishing.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
+        polishing.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir)
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print("")
         print("%s TandemQUAST finished" % date)
         sys.exit(0)
 
-    select_kmers.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
-
     # -----MAPPING----
     print("")
     print("*********************************")
-    print("Running reads mapping...")
-    cmdl = [abspath(join(dirname(realpath(__file__)), "tandemmapper.py")), "-r", reads_fname, "-t", str(threads), "-o", out_dir,
-            "-l", ",".join([assembly.label for assembly in assemblies])] + [assembly.fname for assembly in assemblies] + (["-f"] if no_reuse else [])
+    print("Running TandemMapper...")
+    cmdl = [abspath(join(dirname(realpath(__file__)), "tandemmapper.py")), "-t", str(threads), "-o", out_dir] + \
+           ["--nano" if nano_reads_fname else "--pacbio", reads_fname] + \
+           ["-l", ",".join([assembly.label for assembly in assemblies])] + \
+           [assembly.fname for assembly in assemblies] + (["-f"] if no_reuse else [])
     return_code = subprocess.call(cmdl)
     if return_code != 0:
         print("ERROR: tandemMapper failed! Please check input files and tandemMapper output. TandemQUAST cannot proceed without alignments")

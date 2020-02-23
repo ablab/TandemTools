@@ -3,21 +3,37 @@
 import datetime
 import os
 import sys
-from os.path import abspath, isdir, join
+from os.path import abspath, isdir, join, basename
 import click
+
+import config
+from scripts.utils import compress_homopolymers
 
 
 @click.command()
 @click.argument('assembly_fnames', type=click.Path(exists=True), nargs=-1)
-@click.option('-r', 'reads_fname', type=click.Path(exists=True), required=True, help='File with reads')
+@click.option('--nano', 'nano_reads_fname', type=click.Path(exists=True), help='File with ONT reads')
+@click.option('--pacbio', 'pacbio_reads_fname', type=click.Path(exists=True), help='File with PacBio CLR reads')
 @click.option('-o', 'out_dir', type=click.Path(), required=True, help='Output folder')
 @click.option('-t', 'threads', type=click.INT, help='Threads')
 @click.option('-l', 'labels', help='Comma separated list of assembly labels')
-@click.option('--hi-fi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads')
+@click.option('--hifi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads')
 @click.option('-f', '--no-reuse', 'no_reuse', is_flag=True, help='Do not reuse old files')
-def main(assembly_fnames, reads_fname, hifi_reads_fname, out_dir, labels, threads, no_reuse):
+
+def main(assembly_fnames, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname, out_dir, labels, threads, no_reuse):
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("%s TandemMapper started" % date)
+
+    if nano_reads_fname and pacbio_reads_fname or (not nano_reads_fname and not pacbio_reads_fname):
+        print("ERROR! You should specify ONE path to a file with reads (ONT or Pacbio CLR reads)")
+        sys.exit(2)
+
+    if nano_reads_fname:
+        raw_reads_fname = nano_reads_fname
+        config.platform = "nano"
+    else:
+        raw_reads_fname = pacbio_reads_fname
+        config.platform = "pacbio"
 
     if not assembly_fnames:
         print("ERROR! You should specify at least one assembly file.")
@@ -39,7 +55,23 @@ def main(assembly_fnames, reads_fname, hifi_reads_fname, out_dir, labels, thread
             print("ERROR! Number of labels must correspond to the number of analyzed assemblies")
             sys.exit(2)
     assemblies = [Assembly(assembly_fnames[i], name=list_labels[i], out_dir=out_dir) for i in range(len(assembly_fnames))]
-    select_kmers.do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
+
+    if config.platform == "pacbio":
+        compress_homopolymers(assemblies)
+        from Bio import SeqIO
+        from itertools import groupby
+        reads_fname = join(out_dir, "compress_" + basename(raw_reads_fname).replace('fastq', 'fasta'))
+        with open(raw_reads_fname) as handle:
+            with open(reads_fname, "w") as out:
+                for record in SeqIO.parse(handle, raw_reads_fname.split('.')[-1]):
+                    seq = record.seq
+                    compress_seq = ''.join(x[0] for x in groupby(list(seq)))
+                    out.write(">" + str(record.id) + "\n")
+                    out.write(compress_seq + "\n")
+    else:
+        reads_fname = raw_reads_fname
+
+    select_kmers.do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
     make_alignments.do(assemblies, reads_fname, out_dir, threads, no_reuse)
 
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

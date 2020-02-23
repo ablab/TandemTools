@@ -35,7 +35,9 @@ def run_flye(assembly, reads_fname, out_dir, threads):
               % (dirname(ASSEMBLY_BIN), dirname(dirname(ASSEMBLY_BIN))))
         sys.exit(2)
     cmd = [ASSEMBLY_BIN, '--reads', reads_fname,
-           '--asm', assembly.fname, '--kmers', abspath(assembly.kmers_fname), '--out-file', abspath(assembly.chains_fname),
+           '--asm', assembly.compressed_fname or assembly.fname,
+           '--kmers', abspath(assembly.compressed_kmers_fname or assembly.kmers_fname),
+           '--out-file', abspath(assembly.chains_fname),
            '--out-asm', 'draft_assembly.fasta', '--max-diff', str(assembly.max_aln_diff),
            '--genome-size', str(get_fasta_len(assembly.fname)), '--config', abspath(get_flye_cfg_fname()),
            '--log', join(out_dir, 'mapping.log'),
@@ -148,7 +150,7 @@ def postprocess_chains(assembly):
                         best_len = seeds[-1][1] - seeds[0][1]
                         best_chain = [[seeds[0][1], seeds[-1][1], seeds[0][0], seeds[-1][0]]]
 
-                    if best_len < MIN_CHAIN_LEN:
+                    if best_len < 100:
                         continue
                     if best_kmers > max_kmers:
                         max_kmers = best_kmers
@@ -157,7 +159,9 @@ def postprocess_chains(assembly):
 
             for c in selected_chain:
                 ref_start, ref_end, align_start, align_end = c
-                if (ref_end-ref_start)-assembly_seq[ref_start:ref_end].count('N') < MIN_CHAIN_LEN:
+                if assembly.real_coords:
+                    ref_start, ref_end = assembly.real_coords[ref_start], assembly.real_coords[ref_end]
+                if (ref_end-ref_start) < MIN_CHAIN_LEN:
                     continue
                 num_alignments += 1
                 f.write("seq\t%d\t%d\t%s\t%d\t%d\t%d\n" % (

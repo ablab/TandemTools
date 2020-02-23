@@ -39,10 +39,10 @@ def make_jellyfish():
     print('Jellyfish is compiled successful!')
 
 
-def draw_plot(assembly, kmers, plot_fname, kmers_type):
+def draw_plot(assembly_fname, label, kmers, plot_fname, kmers_type):
     unique_kmer_pos = []
     assembly_len = 0
-    with open(assembly.fname) as handle:
+    with open(assembly_fname) as handle:
         for record in SeqIO.parse(handle, 'fasta'):
             assembly_seq = str(record.seq)
             assembly_len = len(assembly_seq)
@@ -53,7 +53,7 @@ def draw_plot(assembly, kmers, plot_fname, kmers_type):
                     unique_kmer_pos[i] = 1
     unique_bins = [sum(unique_kmer_pos[i:i + KMER_WINDOW_SIZE]) for i in range(0, assembly_len, KMER_WINDOW_SIZE)]
 
-    make_plot(plot_fname, "Distribution of %s k-mers" % kmers_type, assembly.label, xlabel="Position", ylabel="$\it{k}$--mer counts",
+    make_plot(plot_fname, "Distribution of %s k-mers" % kmers_type, label, xlabel="Position", ylabel="$\it{k}$--mer counts",
               bar_values=unique_bins, plot_color="blue", max_x=assembly_len)
 
 
@@ -76,7 +76,7 @@ def filter_kmers(reads_fname, kmers):
     return solid_kmers
 
 
-def calculate_thresholds(assembly, kmers, ref_kmers_pos, reads_fname):
+def calculate_thresholds(kmers, ref_kmers_pos, reads_fname):
     all_reads_kmer_pos = defaultdict(dict)
     with open(reads_fname) as handle:
         for record in SeqIO.parse(handle, reads_fname.split('.')[-1]):
@@ -111,10 +111,10 @@ def calculate_thresholds(assembly, kmers, ref_kmers_pos, reads_fname):
         prev_kmer, prev_pos = kmer, pos
     iqr_diff = np.percentile(diff_distances, 75) - np.percentile(diff_distances, 25)
     max_diff = np.median(diff_distances) + iqr_diff
-    assembly.max_aln_diff = max(0.1, min(max_diff, 0.25))
+    return max_diff
 
 
-def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, only_polish=False):
+def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, only_polish=False):
     print("")
     print("*********************************")
     print("K-mers selection started...")
@@ -131,6 +131,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
             print("Reusing previously selected k-mers...")
             continue
         print("Analyzing %s assembly" % assembly.label)
+        assembly_fname = assembly.compressed_fname or assembly.fname
         readkmers_db = join(tmp_dir, basename(reads_fname) + ".jf")
         readkmers_fname = join(out_dir, basename(reads_fname)+".kmers.txt")
         if not exists(readkmers_fname) or no_reuse:
@@ -140,7 +141,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
             subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
 
         assembly_db = join(tmp_dir, assembly.name + ".jf")
-        cmd = [jellyfish_bin, "count", "-m%d" % KMER_SIZE, "-s100M", "-o", assembly_db, assembly.fname]
+        cmd = [jellyfish_bin, "count", "-m%d" % KMER_SIZE, "-s100M", "-o", assembly_db, assembly_fname]
         subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
         cmd = [jellyfish_bin, "dump", assembly_db, "-o", assembly.all_kmers_fname]
         subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
@@ -159,7 +160,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
                     unique_kmers.add(kmer)
 
         freq_in_reads = defaultdict()
-        max_occ_in_assembly = max(1, get_fasta_len(assembly.fname) // 100000)
+        max_occ_in_assembly = max(1, get_fasta_len(assembly_fname) // 100000)
         hist_values = [0] * (MAX_OCCURRENCES+1)
         rare_hist_values = [0] * (MAX_OCCURRENCES+1)
         missed_kmers = set()
@@ -167,7 +168,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
             for line in f:
                 kmer, freq = line.split()
                 freq = int(freq)
-                if freq_in_assembly[kmer] <= MAX_KMER_FREQ:
+                if freq_in_assembly[kmer] <= max_occ_in_assembly:
                     rare_hist_values[min(freq, MAX_OCCURRENCES)] += 1
                 hist_values[min(freq, MAX_OCCURRENCES)] += 1
                 if freq > 0:
@@ -177,7 +178,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
 
         print("  %d k-mers do not occur in reads!" % hist_values[0])
         plot_fname = join(out_dir, assembly.name + "_missedkmers_hist.png")
-        draw_plot(assembly, missed_kmers, plot_fname, "missed")
+        draw_plot(assembly_fname, assembly.label, missed_kmers, plot_fname, "missed")
 
         plot_fname = join(out_dir, assembly.name + "_kmers_hist.png")
         make_plot(plot_fname, "Histogram of k-mer occurrences", assembly.label, xlabel="Occurrences in reads", ylabel="$\it{k}$-mer counts",
@@ -221,7 +222,7 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
             if freq_in_assembly[kmer] <= max_occ_in_assembly and real_min_occ <= int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
                 selected_kmers.add(kmer)
 
-        ref_kmers_pos, kmer_by_pos = get_kmers_positions(assembly.fname, selected_kmers)
+        ref_kmers_pos, kmer_by_pos = get_kmers_positions(assembly_fname, selected_kmers)
         kmer_markers = [1 if i else 0 for i in kmer_by_pos]
         kmer_density = [sum(kmer_markers[i:i+KMER_SELECT_WINDOW_SIZE]) for i in range(0, len(kmer_by_pos), KMER_SELECT_WINDOW_SIZE)]
         kmer_density = [k for k in kmer_density if k > 1]
@@ -237,10 +238,11 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
                 filtered_kmers.extend(cur_kmers)
         selected_kmers = set(filtered_kmers)
         print("  %d rare k-mers were selected" % len(selected_kmers))
-        calculate_thresholds(assembly, selected_kmers, ref_kmers_pos, reads_fname)
+        max_diff = calculate_thresholds(selected_kmers, ref_kmers_pos, reads_fname)
+        assembly.max_aln_diff = max(0.1, min(max_diff, 0.25))
 
         plot_fname = join(out_dir, assembly.name + "_selected_kmers.png")
-        draw_plot(assembly, selected_kmers, plot_fname, "selected")
+        draw_plot(assembly_fname, assembly.label, selected_kmers, plot_fname, "selected")
 
         #print("  Filtering unique solid k-mers...")
         with open(assembly.kmers_fname, "w") as out_f:
@@ -249,8 +251,22 @@ def do(assemblies, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, on
                 if freq_in_assembly[kmer] == 1:
                     solid_kmers.add(kmer)
 
-        if not only_polish:
-            solid_kmers = filter_kmers(reads_fname,solid_kmers)
+        if platform == "pacbio" and not only_polish:
+            assembly_db = join(tmp_dir, assembly.name + "_uncompressed.jf")
+            cmd = [jellyfish_bin, "count", "-m%d" % KMER_SIZE, "-s100M", "-o", assembly_db, assembly.fname]
+            subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
+            cmd = [jellyfish_bin, "dump", assembly_db, "-o", assembly.all_kmers_fname]
+            subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
+
+            unique_kmers = set()
+            with open(assembly.all_kmers_fname) as f:
+                for record in SeqIO.parse(f, 'fasta'):
+                    kmer, freq = str(record.seq), int(record.id)
+                    if freq == 1:
+                        unique_kmers.add(kmer)
+            solid_kmers = filter_kmers(raw_reads_fname, unique_kmers)
+        elif not only_polish:
+            solid_kmers = filter_kmers(reads_fname, solid_kmers)
         with open(assembly.solid_kmers_fname, "w") as f:
             for kmer in solid_kmers:
                 f.write("%s\n" % kmer)
