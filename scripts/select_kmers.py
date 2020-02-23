@@ -107,7 +107,9 @@ def calculate_thresholds(kmers, ref_kmers_pos, reads_fname):
         for read_kmer_pos in all_reads_kmer_pos.values():
             if kmer in read_kmer_pos and prev_kmer in read_kmer_pos:
                 dist1, dist2 = abs(pos-prev_pos), abs(read_kmer_pos[kmer]-read_kmer_pos[prev_kmer])
-                diff_distances.append(abs(dist1-dist2)*1.0/min(dist1,dist2))
+                dist_diff = abs(dist1-dist2)*1.0/min(dist1,dist2)
+                if dist_diff <= 1:
+                    diff_distances.append(dist_diff)
         prev_kmer, prev_pos = kmer, pos
     iqr_diff = np.percentile(diff_distances, 75) - np.percentile(diff_distances, 25)
     max_diff = np.median(diff_distances) + iqr_diff

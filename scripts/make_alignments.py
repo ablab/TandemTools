@@ -36,7 +36,7 @@ def run_flye(assembly, reads_fname, out_dir, threads):
         sys.exit(2)
     cmd = [ASSEMBLY_BIN, '--reads', reads_fname,
            '--asm', assembly.compressed_fname or assembly.fname,
-           '--kmers', abspath(assembly.compressed_kmers_fname or assembly.kmers_fname),
+           '--kmers', abspath(assembly.kmers_fname),
            '--out-file', abspath(assembly.chains_fname),
            '--out-asm', 'draft_assembly.fasta', '--max-diff', str(assembly.max_aln_diff),
            '--genome-size', str(get_fasta_len(assembly.fname)), '--config', abspath(get_flye_cfg_fname()),
