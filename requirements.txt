@@ -7,3 +7,4 @@ matplotlib
 pandas
 plotly
 python-slugify
+regex
