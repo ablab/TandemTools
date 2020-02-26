@@ -1,6 +1,7 @@
 biopython
 click
 edlib
+jellyfish
 joblib
 numpy
 matplotlib

@@ -12,7 +12,7 @@ Note: TandemTools is designed specifically for ETR (range in length from hundred
 
 ## Installation
 
-Requirements are listed in ```requirements.txt``` and can be installed through Conda as ```conda install --file requirements.txt```
+Requirements are listed in ```requirements.txt``` and can be installed through Conda as ```conda install --file requirements.txt```.
 
 ## Usage
 

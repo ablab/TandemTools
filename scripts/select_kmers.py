@@ -1,42 +1,16 @@
-import os
 import random
+import re
 import subprocess
 import sys
 from collections import defaultdict
-from os.path import join, exists, basename, dirname
+from os.path import join, exists, basename
 
 from Bio import SeqIO
 import numpy as np
 
 from config import *
 from scripts.reporting import make_plot
-from scripts.utils import rev_comp, get_ext_tools_dir, get_kmers_positions, get_fasta_len
-
-jellyfish_bin = join(get_ext_tools_dir(), "jellyfish", "bin", "jellyfish")
-
-
-def make_jellyfish():
-    if exists(jellyfish_bin):
-        return
-    jellyfish_bin_dir = dirname(jellyfish_bin)
-    jellyfish_dir = dirname(jellyfish_bin_dir)
-    if not exists(jellyfish_bin_dir):
-        os.makedirs(jellyfish_bin_dir)
-
-    print('Compiling Jellyfish...')
-    cwd = os.getcwd()
-    os.chdir(jellyfish_dir)
-    return_code = subprocess.call(['./configure', '--prefix=%s' % jellyfish_dir],
-                                  stdout=open(join(jellyfish_dir, "make.log"),"w"),
-                                  stderr=open(join(jellyfish_dir, "make.err"),"w"))
-    if return_code != 0:
-        raise
-    os.chdir(cwd)
-    return_code = subprocess.call(['make', '-C', jellyfish_dir],
-                                  stdout=open(join(jellyfish_dir, "make.log"),"w"), stderr=open(join(jellyfish_dir, "make.err"),"w"))
-    if return_code != 0:
-        raise
-    print('Jellyfish is compiled successful!')
+from scripts.utils import rev_comp, get_kmers_positions, get_fasta_len
 
 
 def draw_plot(assembly_fname, label, kmers, plot_fname, kmers_type):
@@ -116,17 +90,34 @@ def calculate_thresholds(kmers, ref_kmers_pos, reads_fname):
     return max_diff
 
 
+def check_jf_version():
+    p = subprocess.Popen(["jellyfish", '--version'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout, stderr = p.communicate()
+    version_pattern = re.compile('(?P<major_version>\d+)\.(?P<minor_version>\d+)')
+    v = version_pattern.search(str(stdout))
+    if not v.group('major_version') or not v.group('minor_version'):
+        return False
+    version, minor_version = 2, 2
+    if int(v.group('major_version')) == version and int(v.group('minor_version')) >= minor_version:
+        return True
+
+
 def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse, only_polish=False):
     print("")
     print("*********************************")
     print("K-mers selection started...")
 
+    jellyfish_bin = "jellyfish"
     try:
-        make_jellyfish()
+        subprocess.call(["jellyfish", "--version"], stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     except:
-        print('Failed to compile Jellyfish! Please try to compile it manually in %s'
-              % dirname(dirname(jellyfish_bin)))
+        print('Jellyfish is not found in your PATH! Please install Jellyfish and rerun TandemTools. Jellyfish can be installed through conda install jellyfish')
         sys.exit(2)
+    if not check_jf_version():
+        print('Jellyfish is obsolete. Please install new version of Jellyfish and rerun TandemTools. '
+              'Jellyfish can be installed via "conda install jellyfish"')
+        sys.exit(2)
+
     for assembly in assemblies:
         print("")
         if exists(assembly.solid_kmers_fname) and not no_reuse:
