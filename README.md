@@ -20,30 +20,30 @@ Requirements are listed in ```requirements.txt``` and can be installed through C
 tandemquast.py [options] --nano/--pacbio <reads_file> -o <output_dir> <assembly_file1> <assembly_file2>
 
 Required arguments:
-    --nano      PATH                    File with Oxford Nanopore reads used for ETR assembly 
+    --nano         PATH                 File with Oxford Nanopore reads used for ETR assembly 
       or
-    --pacbio    PATH                    File with PacBio CLR reads used for ETR assembly
-    -o          PATH                    Folder to store all result files
+    --pacbio       PATH                 File with PacBio CLR reads used for ETR assembly
+    -o             PATH                 Folder to store all result files
 
 Optional arguments:    
-    -t          INT                     Maximum number of threads [default: 4]
-    -l          \"label,label,...\"     Human-readable names of assemblies to use in reports, comma-separated. If contain spaces, use quotes 
-    -m          PATH                    FASTA file with monomer sequences
-    --hifi     PATH                    File with accurate PacBio HiFi reads
-    --polish                            Run tandemQUAST polishing module (metrics will not be calculated).
+    -t             INT                  Maximum number of threads [default: 4]
+    -l             \"label,label,...\"  Human-readable names of assemblies to use in reports, comma-separated. If contain spaces, use quotes 
+    -m             PATH                 FASTA file with monomer sequences
+    --hifi         PATH                 File with accurate PacBio HiFi reads
+    --only-polish                       Run tandemQUAST polishing module (metrics will not be calculated).
 ```
 
 ```shell
 tandemmapper.py [options] --nano/--pacbio <reads_file> -o <output_dir> <assembly_file1> <assembly_file2>
 
 Required arguments:
-    --nano      PATH                    File with Oxford Nanopore reads used for ETR assembly 
+    --nano         PATH                 File with Oxford Nanopore reads used for ETR assembly 
       or
-    --pacbio    PATH                    File with PacBio CLR reads used for ETR assembly
-    -o          PATH                    Folder to store alignment results
+    --pacbio       PATH                 File with PacBio CLR reads used for ETR assembly
+    -o             PATH                 Folder to store alignment results
 
 Optional arguments:    
-    -t          INT                     Maximum number of threads [default: 4]
+    -t             INT                  Maximum number of threads [default: 4]
 ```
 
 ## Output files
