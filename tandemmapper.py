@@ -56,23 +56,17 @@ def main(assembly_fnames, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname
             sys.exit(2)
     assemblies = [Assembly(assembly_fnames[i], name=list_labels[i], out_dir=out_dir) for i in range(len(assembly_fnames))]
 
+    reads_real_coords = dict()
     if config.platform == "pacbio":
-        compress_homopolymers(assemblies)
-        from Bio import SeqIO
-        from itertools import groupby
+        for assembly in assemblies:
+            assembly.real_coords = compress_homopolymers(assembly.fname, assembly.compressed_fname)
         reads_fname = join(out_dir, "compress_" + basename(raw_reads_fname).replace('fastq', 'fasta'))
-        with open(raw_reads_fname) as handle:
-            with open(reads_fname, "w") as out:
-                for record in SeqIO.parse(handle, raw_reads_fname.split('.')[-1]):
-                    seq = record.seq
-                    compress_seq = ''.join(x[0] for x in groupby(list(seq)))
-                    out.write(">" + str(record.id) + "\n")
-                    out.write(compress_seq + "\n")
+        reads_real_coords = compress_homopolymers(raw_reads_fname, reads_fname)
     else:
         reads_fname = raw_reads_fname
 
     select_kmers.do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
-    make_alignments.do(assemblies, reads_fname, out_dir, threads, no_reuse)
+    make_alignments.do(assemblies, reads_fname, reads_real_coords, out_dir, threads, no_reuse)
 
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("")

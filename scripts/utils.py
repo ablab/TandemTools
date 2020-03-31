@@ -43,27 +43,27 @@ def is_python2():
     return sys.version_info[0] < 3
 
 
-def compress_homopolymers(assemblies):
-    for assembly in assemblies:
-        real_coords = dict()
-        with open(assembly.fname) as handle:
-            with open(assembly.compressed_fname, "w") as out:
-                for record in SeqIO.parse(handle, 'fasta'):
-                    seq = record.seq
+def compress_homopolymers(fname, compressed_fname):
+    real_coords = dict()
+    with open(fname) as handle:
+        with open(compressed_fname, "w") as out:
+            for record in SeqIO.parse(handle, 'fasta'):
+                seq = record.seq
+                real_coords[record.id] = dict()
                 compress_seq = ''
                 prev_s = ''
                 cur_i = 0
-                for i,x in enumerate(seq):
+                for i, x in enumerate(seq):
                     if x == prev_s:
-                        real_coords[i] = cur_i
                         continue
-                    compress_seq+= x
-                    real_coords[cur_i] = i
+                    real_coords[record.id][cur_i] = i
+                    compress_seq += x
                     prev_s = x
-                    cur_i+=1
-                assembly.real_coords = real_coords
+                    cur_i += 1
+
                 out.write(">" + str(record.id) + "\n")
                 out.write(compress_seq + "\n")
+    return real_coords
 
 
 def run_parallel(_fn, fn_args, n_jobs=None, filter_results=False):

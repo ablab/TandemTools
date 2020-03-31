@@ -45,17 +45,18 @@ def run_flye(assembly, reads_fname, out_dir, threads):
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
 
 
-def postprocess_chains(assembly):
+def postprocess_chains(assembly, reads_real_coords):
     rare_kmers = get_kmers(assembly.kmers_fname)
     unique_kmers = get_kmers(assembly.solid_kmers_fname)
 
     rare_kmers_by_pos = []
     unique_kmers_by_pos = []
-    assembly_seq = ""
+    assembly_id = ""
     with open(assembly.fname) as handle:
         for record in SeqIO.parse(handle, 'fasta'):
             assembly_len = len(record.seq)
             assembly_seq = str(record.seq)
+            assembly_id = str(record.id)
             rare_kmers_by_pos = [0] * assembly_len
             unique_kmers_by_pos = [0] * assembly_len
             for i in range(len(assembly_seq) - KMER_SIZE + 1):
@@ -160,24 +161,25 @@ def postprocess_chains(assembly):
             for c in selected_chain:
                 ref_start, ref_end, align_start, align_end = c
                 if assembly.real_coords:
-                    ref_start, ref_end = assembly.real_coords[ref_start], assembly.real_coords[ref_end]
+                    ref_start, ref_end = assembly.real_coords[assembly_id][ref_start], assembly.real_coords[assembly_id][ref_end]
+                    align_start, align_end = reads_real_coords[read_name][align_start], reads_real_coords[read_name][align_end]
                 if (ref_end-ref_start) < MIN_CHAIN_LEN:
                     continue
                 num_alignments += 1
-                f.write("seq\t%d\t%d\t%s\t%d\t%d\t%d\n" % (
-                ref_start, ref_end, slugify(read_name), align_start, align_end, read_lengths[read_name]))
+                f.write("seq\t%d\t%d\t%s\t%d\t%d\t%d\n" %
+                        (ref_start, ref_end, slugify(read_name), align_start, align_end, read_lengths[read_name]))
 
     print("  Total %d alignments" % num_alignments)
     print("  Longest chains saved to %s" % assembly.bed_fname)
 
 
-def do(assemblies, reads_fname, out_dir, threads, no_reuse):
+def do(assemblies, reads_fname, reads_real_coords, out_dir, threads, no_reuse):
     print("")
     print("*********************************")
     print("Read mapping started...")
     run_parallel(run_flye, [(assembly, reads_fname, out_dir, max(1, threads // len(assemblies)))
                             for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse], n_jobs=threads)
     for assembly in assemblies:
-        postprocess_chains(assembly)
+        postprocess_chains(assembly, reads_real_coords)
     print("Read mapping finished")
 
