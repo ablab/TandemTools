@@ -100,6 +100,6 @@ def do(assemblies, out_dir):
 
         plot_fname = join(out_dir, "report", assembly.name + "_bp_analysis.png")
         uncovered_bars = [(r[0] / step, r[1] / step) for r in uncovered_regions if (r[1] / step - r[0] / step) > 10]
-        make_plot(plot_fname, "Breakpoint", assembly.label, xlabel="position", ylabel="breakpointRatio", plot_values=real_vals, plot_color="red",
-                  fill_values=ideal_vals, fill_color="gray", ymax=1, max_x=assembly_len, bg_bars=uncovered_bars)
+        make_plot(plot_fname, "Breakpoint", assembly.label, xlabel="position", ylabel="breakpointRatio", fill_values=real_vals, fill_color="red",
+                  fill_values2=ideal_vals, fill_color2="gray", ymax=1, max_x=assembly_len, bg_bars=uncovered_bars)
     print("Breakpoint analysis finished.")

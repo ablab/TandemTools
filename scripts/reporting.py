@@ -16,7 +16,8 @@ pdf_content = []
 
 def make_plot(plot_fname, plot_type, plot_title, xlabel, ylabel, list_vals=None, legend=None,
               bar_values=None, plot_values=None, plot_color=None,
-              fill_values=None, fill_color=None, ymax=None, max_x=None, bg_bars=None):
+              fill_values=None, fill_color=None, fill_values2=None, fill_color2=None,
+              ymax=None, max_x=None, bg_bars=None):
     fig, ax = plt.subplots(figsize=(20, 10))
     max_plot_x = 0
     if list_vals:
@@ -33,11 +34,14 @@ def make_plot(plot_fname, plot_type, plot_title, xlabel, ylabel, list_vals=None,
         ax.bar(range(len(bar_values)), bar_values, color=plot_color, align='edge')
         max_plot_x = max(max_plot_x, len(bar_values))
     if not (plot_values is None):
-        ax.fill_between(range(len(plot_values)), plot_values, color=plot_color)
+        ax.plot(range(len(plot_values)), plot_values, color=plot_color)
         max_plot_x = max(max_plot_x, len(plot_values))
     if not (fill_values is None):
         ax.fill_between(range(len(fill_values)), fill_values, step="mid", color=fill_color)
         max_plot_x = max(max_plot_x, len(fill_values))
+    if not (fill_values2 is None):
+        ax.fill_between(range(len(fill_values2)), fill_values2, step="mid", color=fill_color2)
+        max_plot_x = max(max_plot_x, len(fill_values2))
 
     if bg_bars:
         for b in bg_bars:
