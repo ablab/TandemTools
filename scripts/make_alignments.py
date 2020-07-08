@@ -203,8 +203,8 @@ def do(assemblies, reads_fname, reads_real_coords, out_dir, threads, no_reuse):
     for assembly in assemblies:
         errors = postprocess_chains(assembly, reads_real_coords)
         coverage = calculate_coverage(get_fasta_len(assembly.fname), assembly.bed_fname)
-        all_data.append((assemblies, errors, coverage))
-    make_plotly_noise(all_data, out_dir)
+        all_data.append((errors, coverage))
+    make_plotly_noise(assemblies, all_data, out_dir)
     print("Read mapping finished")
 
 

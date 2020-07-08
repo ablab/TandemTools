@@ -72,7 +72,7 @@ def make_plot(plot_fname, plot_type, plot_title, xlabel, ylabel, list_vals=None,
     return plot_fname
 
 
-def make_plotly_noise(assemblies,all_data, out_dir):
+def make_plotly_noise(assemblies, all_data, out_dir):
     fig = make_subplots(rows=len(all_data), cols=1,
                         subplot_titles=[a.label for a in assemblies])
     colors = px.colors.qualitative.Plotly + px.colors.qualitative.Antique
@@ -125,7 +125,7 @@ def make_plotly_noise(assemblies,all_data, out_dir):
 
     plot_fname = join(out_dir, "report", "kmers_dist_diff.html")
     fig.write_html(plot_fname)
-    print("  Monomer length distribution plot saved to %s" % plot_fname)
+    print("  Difference in k-mer distances plot saved to %s" % plot_fname)
 
 
 def make_plotly_html(assembly, ref_stats, out_dir):
