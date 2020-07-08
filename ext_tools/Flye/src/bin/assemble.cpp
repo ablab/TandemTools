@@ -261,7 +261,7 @@ int main(int argc, char** argv)
 	    for (auto kmerPos : IterKmers(seq.sequence))
 		{
 		    if (vertexIndex.kmerFreq(kmerPos.kmer)) {
-                Logger::get().debug() << "pos " << kmerPos.position << " freq " << vertexIndex.kmerFreq(kmerPos.kmer);
+                //Logger::get().debug() << "pos " << kmerPos.position << " freq " << vertexIndex.kmerFreq(kmerPos.kmer);
                 //for (const auto& extReadPos : vertexIndex.iterKmerPos(itKmer.second))
                 numKmers++;
                 kmerPositions[kmerPos.position] = numKmers;

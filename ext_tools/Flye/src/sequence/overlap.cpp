@@ -261,10 +261,9 @@ namespace
 //This implementation was inspired by Heng Li's minimap2 paper
 //might be used in parallel
 std::vector<OverlapRange> 
-OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec, const std::vector<int>& kmerPositions,
+OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec,
 								bool& outSuggestChimeric,
-								OvlpDivStats& divStats,
-								int maxOverlaps) const
+								OvlpDivStats& divStats) const
 {
 	//static std::ofstream fout("../kmers.txt");
 	
@@ -277,6 +276,7 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec, const std::vector<i
 	const float SM_DIFF = 10;
 	const float MAX_DIFF = Parameters::get().maxDiff;  // max difference between distances in a read and in an assembly
 	const float KMER_BONUS = 10; // bonus for each added non-overlapping k-mer
+    int maxOverlaps = 0;
 
 	outSuggestChimeric = false;
 	int32_t curLen = fastaRec.sequence.length();
@@ -370,7 +370,8 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec, const std::vector<i
 				extReadPos.position == curKmerPos.position)) continue;
 
             int32_t freq = _vertexIndex.kmerFreq(curKmerPos.kmer);
-            size_t bonus = std::max(freq > 1 ? std::log(52-freq)*2 : 10.0, 1.0);
+            int bonus = freq > 1 ? std::log(51-freq) : 10.0;
+                bonus = std::max(bonus, 1); //std::log(52-freq)
 			vecMatches.emplace_back(curKmerPos.position, 
 									extReadPos.position,
 									bonus,
@@ -469,20 +470,17 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec, const std::vector<i
 			{
 				int32_t curPrev = matchesList[j].curPos;
 				int32_t extPrev = matchesList[j].extPos;
-				int missedKmers = 0;
-				if (kmerPositions.size() != 0 && extNext - extPrev > 500) {
-                    missedKmers = kmerPositions[extNext] - kmerPositions[extPrev];
-				}
 				if (0 < curNext - curPrev && curNext - curPrev < _maxJump &&
-					0 < extNext - extPrev && extNext - extPrev < _maxJump && missedKmers < 500)
+					0 < extNext - extPrev && extNext - extPrev < _maxJump)
 				{
 					int32_t matchScore = std::min(abs(curNext - curPrev), abs(extNext - extPrev));
 					int32_t distDiff = abs(abs(curNext - curPrev) - abs(extNext - extPrev));
-					if (distDiff<=MAX_DIFF*matchScore) {
+
+					if (distDiff< 20000) { //  MAX_DIFF*matchScore) {
                         int32_t diffPenalty = distDiff > SM_DIFF ? (distDiff*100)/matchScore : std::min(1, distDiff);
                         int32_t maxBonus = matchesList[i].bonus; //matchScore >= kmerSize ? matchesList[i].bonus : 1;
 
-                        int32_t nextScore = scoreTable[j] + maxBonus - diffPenalty;
+                        int32_t nextScore = std::max(scoreTable[j]-20, scoreTable[j] + maxBonus - diffPenalty);
                         if (nextScore > maxScore && nextScore - scoreTable[j] > -100)
                         {
                             maxScore = nextScore;
@@ -585,7 +583,6 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec, const std::vector<i
 							  curLen, extLen);
 			ovlp.curEnd = matchesList[lastMatch].curPos + kmerSize - 1;
 			ovlp.extEnd = matchesList[lastMatch].extPos + kmerSize - 1;
-			size_t chainMissedKmers = kmerPositions[matchesList[lastMatch].extPos] - kmerPositions[matchesList[firstMatch].extPos] - matchesList.size();
 			ovlp.score = scoreTable[lastMatch] - scoreTable[firstMatch] + kmerSize - 1;
 
 			if (this->overlapTest(ovlp, outSuggestChimeric))
@@ -721,12 +718,11 @@ bool OverlapContainer::hasSelfOverlaps(FastaRecord::Id readId)
 
 
 std::vector<OverlapRange> 
-	OverlapContainer::quickSeqOverlaps(FastaRecord::Id readId, std::vector<int> kmerPositions, int maxOverlaps)
+	OverlapContainer::quickSeqOverlaps(FastaRecord::Id readId)
 {
 	bool suggestChimeric;
 	const FastaRecord& record = _queryContainer.getRecord(readId);
-	return _ovlpDetect.getSeqOverlaps(record, kmerPositions, suggestChimeric,
-									  _divergenceStats, maxOverlaps);
+	return _ovlpDetect.getSeqOverlaps(record, suggestChimeric, _divergenceStats);
 }
 
 const std::vector<OverlapRange>&
@@ -750,9 +746,8 @@ const std::vector<OverlapRange>&
 	bool suggestChimeric;
 	const FastaRecord& record = _queryContainer.getRecord(readId);
 	std::vector<int> kmerPositions;
-	auto overlaps = _ovlpDetect.getSeqOverlaps(record, kmerPositions, suggestChimeric,
-											   _divergenceStats,
-											   _ovlpDetect._maxCurOverlaps);
+	auto overlaps = _ovlpDetect.getSeqOverlaps(record, suggestChimeric,
+											   _divergenceStats);
 	overlaps.shrink_to_fit();
 
 	std::vector<OverlapRange> revOverlaps;
