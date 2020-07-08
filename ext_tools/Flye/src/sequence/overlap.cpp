@@ -951,43 +951,71 @@ void OverlapContainer::estimateOverlaperParameters(const std::vector<int>& kmerP
     std::ofstream fout;
     if (!isSam) fout.open(outFile);
     std::ofstream fsamout(samFile);
-    for (size_t i = 0; i < _queryContainer.iterSeqs().size(); ++i)
-    {
-        readsToCheck.push_back(_queryContainer.iterSeqs()[i].id);
-        auto seq_overlaps = this->quickSeqOverlaps(_queryContainer.iterSeqs()[i].id, kmerPositions, /*max ovlps*/ 0);
+	std::vector<OverlapRange> readAlignments;
+	std::vector<std::string> readSamAlignments;
+
+	std::mutex indexMutex;
+
+	std::function<void(const FastaRecord::Id&)> alignRead =
+	[this, &indexMutex, &fout, &isSam, &fsamout, &readAlignments, &readSamAlignments, &indexMutex]
+	(const FastaRecord::Id& seqId)
+	{
+		auto seq_overlaps = this->quickSeqOverlaps(seqId);
         size_t maxKmers = 0;
         size_t bestOvlpId = 0;
+		/////synchronized part
+		indexMutex.lock();
         for (size_t j = 0; j < seq_overlaps.size(); ++j) {
             auto &ovlp = seq_overlaps[j];
-            if (!isSam) {
-                fout << "\tAln\t";
-                ovlp.dump(fout, _queryContainer, _ovlpDetect._seqContainer);
-                fout << "\n";
-                for (auto &posPair : ovlp.kmerMatches) {
-                    fout << posPair.curPos << "\t" << posPair.extPos << "\t" << posPair.bonus << "\n";
-                }
-                fout << "\n";
-            }
+            readAlignments.push_back(ovlp);
             if (ovlp.kmerMatches.size() > maxKmers) {
                 maxKmers = ovlp.kmerMatches.size();
                 bestOvlpId = j;
             }
         }
+		indexMutex.unlock();
         if (maxKmers >= 20){
             auto &ovlp = seq_overlaps[bestOvlpId];
-            const FastaRecord fastaRec = _queryContainer.getRecord(_queryContainer.iterSeqs()[i].id);
+            const FastaRecord fastaRec = _queryContainer.getRecord(seqId);
             if (_ovlpDetect._seqContainer.seqName(ovlp.extId).front()=='+') {
                 size_t alignLen = std::min(ovlp.curLen - ovlp.curBegin-1, ovlp.extLen-ovlp.extBegin-1);
-                //[2019-12-26 17:48:05] INFO: 124562 255115 160554 62322 63480
-                Logger::get().info() << alignLen << " " << ovlp.curBegin << " " << ovlp.extBegin << " "<<(ovlp.extEnd - ovlp.extBegin-1) << " " << (ovlp.curEnd - ovlp.curBegin-1);
+                //Logger::get().info() << alignLen << " " << ovlp.curBegin << " " << ovlp.extBegin << " "<<(ovlp.extEnd - ovlp.extBegin-1) << " " << (ovlp.curEnd - ovlp.curBegin-1);
                 std::string s = kswAlign(_ovlpDetect._seqContainer.getSeq(ovlp.extId), _ovlpDetect._seqContainer.seqName(ovlp.extId), ovlp.extBegin,
-                                         (ovlp.extEnd - ovlp.extBegin-1), fastaRec.sequence, fastaRec.description, ovlp.curBegin, (ovlp.curEnd - ovlp.curBegin-1),
-                        /*match*/ 1, /*mm*/ -2, /*gap open*/ 2,
+                                        (ovlp.extEnd - ovlp.extBegin-1), fastaRec.sequence, fastaRec.description, ovlp.curBegin, (ovlp.curEnd - ovlp.curBegin-1),
+                       /*match*/ 1, /*mm*/ -2, /*gap open*/ 2,
                         /*gap ext*/ 1, true);
-                fsamout << s;
+		        indexMutex.lock();
+                readSamAlignments.push_back(s);
+		        indexMutex.unlock();
             }
         }
+		/////
+	};
+    for (size_t i = 0; i < _queryContainer.iterSeqs().size(); ++i)
+    {
+        readsToCheck.push_back(_queryContainer.iterSeqs()[i].id);
     }
+	processInParallel(readsToCheck, alignRead,
+					  Parameters::get().numThreads, true);
+
+    for (size_t j = 0; j < readAlignments.size(); ++j) {
+        auto &ovlp = readAlignments[j];
+        if (!isSam) {
+            fout << "\tAln\t";
+            ovlp.dump(fout, _queryContainer, _ovlpDetect._seqContainer);
+            fout << "\n";
+            for (auto &posPair : ovlp.kmerMatches) {
+                fout << posPair.curPos << "\t" << posPair.extPos << "\t" << posPair.bonus << "\n";
+            }
+            fout << "\n";
+        }
+    }
+
+    for (size_t j = 0; j < readSamAlignments.size(); ++j) {
+        auto &s = readSamAlignments[j];
+        fsamout << s;
+    }
+
     fout.close();
     fsamout.close();
 	Logger::get().info() << "Alignments saved to " << outFile;
