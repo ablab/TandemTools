@@ -72,6 +72,62 @@ def make_plot(plot_fname, plot_type, plot_title, xlabel, ylabel, list_vals=None,
     return plot_fname
 
 
+def make_plotly_noise(assemblies,all_data, out_dir):
+    fig = make_subplots(rows=len(all_data), cols=1,
+                        subplot_titles=[a.label for a in assemblies])
+    colors = px.colors.qualitative.Plotly + px.colors.qualitative.Antique
+    step = 100
+    for plot_idx, (errors, coverage) in enumerate(all_data):
+        customdata = []
+        data = dict()
+        data['coverage'] = coverage
+        data['coverage'] = [max(data['coverage'][i:i+step]) for i in range(0, len(data['coverage']), step)]
+        data['reads'] = [0] * len(data['coverage'])
+        data['stddev'] = [0] * len(data['coverage'])
+        data['diff'] = [[] for i in range(len(data['coverage']))]
+        vals = [0] * len(data['coverage'])
+        for e in errors:
+            for i in range(e[0], e[1], step):
+                real_pos = i #- points[k][0]
+                real_pos = int(real_pos / step)
+                if real_pos >= len(data['reads']):
+                    break
+                data['reads'][real_pos] += 1
+                data['diff'][real_pos].append(e[2])
+        new_errors =[]
+        for i in range(len(data['reads'])):
+            mean_diff = np.mean(data['diff'][i]) if data['diff'][i] else 0
+            stddev = np.std(data['diff'][i]) if data['diff'][i] else 0
+            if stddev > 200:
+                stddev = min(stddev, 500)
+                filt_reads = [d for d in data['diff'][i] if abs(d-mean_diff) <= min(mean_diff/2, 3*stddev)]
+            else:
+                filt_reads = data['diff'][i]
+            mean_diff2 = np.mean(filt_reads) if filt_reads else 0
+            stddev2 = np.std(filt_reads) if filt_reads else 0
+            data['diff'][i] = mean_diff2
+            data['stddev'][i] = stddev2
+            vals[i] = len(filt_reads)*1.0/(data['coverage'][i]+data['reads'][i]) if (data['coverage'][i]+data['reads'][i])>3 and  len(filt_reads) > 1 else 0
+            customdata.append((len(filt_reads), data['coverage'][i]+data['reads'][i], mean_diff2, stddev2))
+            if vals[i]>0.5:
+                new_errors.append((i*step, len(filt_reads), data['coverage'][i], data['coverage'][i]+data['reads'][i], mean_diff2, stddev2))
+
+        plot_idx += 1
+        real_x = [i*step for i in range(len(coverage))]
+        fig.add_trace(
+            go.Scatter(x=real_x, y=vals, showlegend=False, customdata = customdata,
+                       hovertemplate="%{customdata[0]} out of %{customdata[1]} reads, "
+                                     "mean diff %{customdata[2]:.2f} std deviation %{customdata[3]:.2f}"), row=plot_idx, col=1)
+        fig.update_yaxes(range=[-0.05,1.05],title_text="% deviated reads", titlefont=dict(size=18), tickfont=dict(size=18),
+                         hoverformat="d", row=plot_idx, col=1)
+        fig.update_xaxes(title_text="Position", titlefont=dict(size=18), tickfont=dict(size=18), hoverformat="d",
+                         row=plot_idx, col=1)
+
+    plot_fname = join(out_dir, "report", "kmers_dist_diff.html")
+    fig.write_html(plot_fname)
+    print("  Monomer length distribution plot saved to %s" % plot_fname)
+
+
 def make_plotly_html(assembly, ref_stats, out_dir):
     fig = make_subplots(rows=2, cols=1,
                         subplot_titles=("Monomer length distribution", "Monomer lengths along the assembly"))
