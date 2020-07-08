@@ -14,20 +14,20 @@ from scripts.utils import rev_comp, get_kmers_positions, get_fasta_len
 
 
 def draw_plot(assembly_fname, label, kmers, plot_fname, kmers_type):
-    unique_kmer_pos = []
+    kmer_pos = []
     assembly_len = 0
     with open(assembly_fname) as handle:
         for record in SeqIO.parse(handle, 'fasta'):
             assembly_seq = str(record.seq)
             assembly_len = len(assembly_seq)
-            unique_kmer_pos = [0] * assembly_len
+            kmer_pos = [0] * assembly_len
             for i in range(len(assembly_seq) - KMER_SIZE + 1):
                 kmer = assembly_seq[i:i + KMER_SIZE]
                 if kmer in kmers or rev_comp(kmer) in kmers:
-                    unique_kmer_pos[i] = 1
-    unique_bins = [sum(unique_kmer_pos[i:i + KMER_WINDOW_SIZE]) for i in range(0, assembly_len, KMER_WINDOW_SIZE)]
+                    kmer_pos[i] = 1
+    unique_bins = [sum(kmer_pos[i:i + KMER_WINDOW_SIZE]) for i in range(0, assembly_len, KMER_WINDOW_SIZE)]
 
-    make_plot(plot_fname, "Distribution of %s k-mers" % kmers_type, label, xlabel="Position", ylabel="$\it{k}$--mer counts",
+    make_plot(plot_fname, "Distribution of %s k-mers" % kmers_type, label, xlabel="Position", ylabel="$\it{k}$-mer counts",
               bar_values=unique_bins, plot_color="blue", max_x=assembly_len)
 
 
@@ -161,7 +161,7 @@ def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_
             for line in f:
                 kmer, freq = line.split()
                 freq = int(freq)
-                if freq_in_assembly[kmer] <= max_occ_in_assembly:
+                if kmer in freq_in_assembly and freq_in_assembly[kmer] <= max_occ_in_assembly:
                     rare_hist_values[min(freq, MAX_OCCURRENCES)] += 1
                 hist_values[min(freq, MAX_OCCURRENCES)] += 1
                 if freq > 0:
@@ -180,7 +180,7 @@ def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_
         total_kmers = sum(hist_values[1:-1])
         cum_occ = 0
 
-        real_min_occ = 0
+        real_min_occ = 1
         real_max_occ = MAX_OCCURRENCES
 
         for i, freq in enumerate(rare_hist_values[1:]):
@@ -212,9 +212,10 @@ def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_
         solid_kmers = set()
 
         for kmer, occ in freq_in_reads.items():
-            if freq_in_assembly[kmer] <= max_occ_in_assembly and real_min_occ <= int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
+            if kmer in freq_in_assembly and freq_in_assembly[kmer] <= max_occ_in_assembly and real_min_occ <= int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
                 selected_kmers.add(kmer)
 
+        print("  %d rare k-mers were selected" % len(selected_kmers))
         ref_kmers_pos, kmer_by_pos = get_kmers_positions(assembly_fname, selected_kmers)
         kmer_markers = [1 if i else 0 for i in kmer_by_pos]
         kmer_density = [sum(kmer_markers[i:i+KMER_SELECT_WINDOW_SIZE]) for i in range(0, len(kmer_by_pos), KMER_SELECT_WINDOW_SIZE)]
@@ -231,13 +232,15 @@ def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_
                 filtered_kmers.extend(cur_kmers)
         selected_kmers = set(filtered_kmers)
         print("  %d rare k-mers were selected" % len(selected_kmers))
-        max_diff = calculate_thresholds(selected_kmers, ref_kmers_pos, reads_fname)
-        assembly.max_aln_diff = max(0.1, min(max_diff, 0.25))
+        #max_diff = calculate_thresholds(selected_kmers, ref_kmers_pos, reads_fname)
+        #assembly.max_aln_diff = max(0.1, min(max_diff, 0.25))
 
         plot_fname = join(out_dir, assembly.name + "_selected_kmers.png")
         draw_plot(assembly_fname, assembly.label, selected_kmers, plot_fname, "selected")
 
         #print("  Filtering unique solid k-mers...")
+        selected_kmers = filter_kmers(reads_fname, selected_kmers)
+        print("  %d solid rare k-mers were selected" % len(selected_kmers))
         with open(assembly.kmers_fname, "w") as out_f:
             for kmer in selected_kmers:
                 out_f.write("%s\n" % kmer)
