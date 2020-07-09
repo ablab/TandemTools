@@ -129,7 +129,7 @@ def postprocess_chains(assembly, reads_real_coords):
                     for i in range(1, len(seeds)):
                         ref_diff = abs(seeds[i][1] - seeds[i-1][1])
                         read_diff = abs(seeds[i][0] - seeds[i-1][0])
-                        max_diff = max(10, min(ref_diff, read_diff) * 0.05)
+                        max_diff = max(100, min(ref_diff, read_diff) * 0.05)
                         if abs(ref_diff-read_diff) >= max_diff: # and abs(ref_diff-read_diff) >= 5000:
                             prev_bp = i-1
                             breakpoints.append(i-1)
