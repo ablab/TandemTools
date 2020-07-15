@@ -64,6 +64,7 @@ namespace
 	{
 		static const int32_t MAX_JUMP = 1000;
 		const int KMER_SIZE = Parameters::get().kmerSize;
+		const int IS_FLYE_POLISH = Parameters::get().polishSam;
 
 		thread_local ThreadMemPool buf;
 		thread_local std::vector<uint8_t> trgByte;
@@ -154,7 +155,7 @@ namespace
 				if (showAlignment)
 				{
 					alnQry += strQ.substr(posQry, size);
-					alnTrg += std::string(size, '-');
+					if (IS_FLYE_POLISH) alnTrg += std::string(size, '-');
 				}
                 posQry += size;
 				condensedLength += std::min(size, KMER_SIZE);
@@ -163,20 +164,29 @@ namespace
 			{
 				if (showAlignment)
 				{
-					alnQry += std::string(size, '-');
+				    if (IS_FLYE_POLISH) alnQry += std::string(size, '-');
 					alnTrg += strT.substr(posTrg, size);
 				}
 				posTrg += size;
 				condensedLength += std::min(size, KMER_SIZE);
 			}
 		}
+        cigar_str += std::to_string(qrySeq.length() - qryBegin - qryLen);
+        cigar_str += "S";
 
-        float errRate = 1 - float(matches) / condensedLength;
+        float errRate = 1 - (float(matches) / condensedLength);
+        int errors = qryLen - matches;
 
         std::stringstream ss;
         if (errRate<=0.2) {
             std::string readFlag = qryName.front() == '+' ? "\t0\t" : "\t16\t";
-            ss << qryName.substr(1) << readFlag << trgName.substr(1) << "\t" << (trgBegin+1) <<"\t60\t" << cigar_str << "\t*\t0\t0\t" << alnTrg << "\t" << alnQry << "\t*\tNM:i:1\n";
+            if (IS_FLYE_POLISH) {
+            ss << qryName.substr(1) << readFlag << trgName.substr(1) << "\t" << (trgBegin+1) <<"\t60\t" << cigar_str << "\t*\t0\t0\t" << alnTrg << "\t" << alnQry << "\t*\tNM:i:" << errors << "\n";
+            }
+            else {
+            ss << qryName.substr(1) << readFlag << trgName.substr(1) << "\t" << (trgBegin+1) <<"\t60\t" << cigar_str << "\t*\t0\t0\t" << qrySeq.str() << "\t*\tNM:i:" << errors << "\n";
+            }
+
         }
         //float errRate = 1 - float(matches) / alnLength;
         //float errRate = 1 - float(matches) / std::max(tseq.size(), qseq.size());
@@ -1011,6 +1021,13 @@ void OverlapContainer::estimateOverlaperParameters(const std::vector<int>& kmerP
         }
     }
 
+    if (!Parameters::get().polishSam) {
+		FastaRecord::Id refId = readAlignments[0].extId;
+		std::string refName = _ovlpDetect._seqContainer.seqName(refId).substr(1);
+		int32_t refLen = _ovlpDetect._seqContainer.seqLen(refId);
+        fsamout << "@SQ\tSN:" << refName << "\tLN:" << refLen << "\n";
+        fsamout << "@PG\tID:tandemMapper\tPN:tandemMapper\tVN:1.0\tCL:tandemmapper.py\n";
+    }
     for (size_t j = 0; j < readSamAlignments.size(); ++j) {
         auto &s = readSamAlignments[j];
         fsamout << s;

@@ -26,7 +26,7 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
                std::string& inAssembly, std::string& outFile, std::string& kmersList,
                std::string& outAssembly, std::string& logFile, size_t& genomeSize,
 			   int& kmerSize, float& maxDiff, bool& debug, size_t& numThreads, int& minOverlap,
-			   std::string& configPath, int& minReadLength, bool& unevenCov)
+			   std::string& configPath, int& minReadLength, bool& unevenCov, bool& polishSam)
 {
 	auto printUsage = [argv]()
 	{
@@ -71,6 +71,7 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 		{"min-ovlp", required_argument, 0, 0},
 		{"meta", no_argument, 0, 0},
 		{"debug", no_argument, 0, 0},
+		{"polish", no_argument, 0, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -96,6 +97,8 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 				debug = true;
 			else if (!strcmp(longOptions[optionIndex].name, "meta"))
 				unevenCov = true;
+			else if (!strcmp(longOptions[optionIndex].name, "polish"))
+				polishSam = true;
 			else if (!strcmp(longOptions[optionIndex].name, "reads"))
 				readsFasta = optarg;
 			else if (!strcmp(longOptions[optionIndex].name, "asm"))
@@ -141,6 +144,7 @@ int main(int argc, char** argv)
 	float maxDiff = 0.15;
 	bool debugging = false;
 	bool unevenCov = false;
+	bool polishSam = false;
 	size_t numThreads = 1;
 	std::string readsFasta;
 	std::string inAssembly;
@@ -152,7 +156,7 @@ int main(int argc, char** argv)
 
 	if (!parseArgs(argc, argv, readsFasta, inAssembly, outFile, kmersList, outAssembly, logFile, genomeSize,
 				   kmerSize, maxDiff, debugging, numThreads, minOverlap, configPath,
-				   minReadLength, unevenCov)) return 1;
+				   minReadLength, unevenCov, polishSam)) return 1;
 
 	Logger::get().setDebugging(debugging);
 	if (!logFile.empty()) Logger::get().setOutputFile(logFile);
@@ -170,6 +174,8 @@ int main(int argc, char** argv)
 	Parameters::get().kmerSize = kmerSize;
 	Parameters::get().minimumOverlap = minOverlap;
 	Parameters::get().unevenCoverage = unevenCov;
+	Parameters::get().polishSam = polishSam;
+
 	Parameters::get().maxDiff = maxDiff;
 	Logger::get().debug() << "Running with k-mer size: " << 
 		Parameters::get().kmerSize; 

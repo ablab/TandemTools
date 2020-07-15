@@ -73,7 +73,7 @@ def polish(contig_seqs, read_seqs, work_dir, kmers_fname, genome_size, num_threa
     raw_alignment_file = os.path.join(work_dir, "aln_%d.sam" %i)
     alignment_file = os.path.join(work_dir, "aln_%d.sort.sam" %i)
     cmd = "%s " \
-          "--reads %s " \
+          "--reads %s --polish " \
           "--out-asm draft_assembly.fasta " \
           "--genome-size %s --config %s " \
           "--log %s/flye.log --min-ovlp 3000  " \
