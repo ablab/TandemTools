@@ -215,7 +215,7 @@ def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_
             if kmer in freq_in_assembly and freq_in_assembly[kmer] <= max_occ_in_assembly and real_min_occ <= int(occ) <= real_max_occ and (not hifi_kmers or hifi_kmers[kmer] >= 1):
                 selected_kmers.add(kmer)
 
-        print("  %d rare k-mers were selected" % len(selected_kmers))
+        #print("  %d rare k-mers were selected" % len(selected_kmers))
         ref_kmers_pos, kmer_by_pos = get_kmers_positions(assembly_fname, selected_kmers)
         kmer_markers = [1 if i else 0 for i in kmer_by_pos]
         kmer_density = [sum(kmer_markers[i:i+KMER_SELECT_WINDOW_SIZE]) for i in range(0, len(kmer_by_pos), KMER_SELECT_WINDOW_SIZE)]
@@ -239,8 +239,8 @@ def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_
         draw_plot(assembly_fname, assembly.label, selected_kmers, plot_fname, "selected")
 
         #print("  Filtering unique solid k-mers...")
-        selected_kmers = filter_kmers(reads_fname, selected_kmers)
-        print("  %d solid rare k-mers were selected" % len(selected_kmers))
+        #selected_kmers = filter_kmers(reads_fname, selected_kmers)
+        #print("  %d solid rare k-mers were selected" % len(selected_kmers))
         with open(assembly.kmers_fname, "w") as out_f:
             for kmer in selected_kmers:
                 out_f.write("%s\n" % kmer)
