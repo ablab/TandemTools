@@ -133,7 +133,7 @@ def postprocess_chains(assembly, reads_real_coords):
                         if abs(ref_diff-read_diff) >= max_diff: # and abs(ref_diff-read_diff) >= 5000:
                             prev_bp = i-1
                             breakpoints.append(i-1)
-                            cur_errors.append((seeds[i-1][1], seeds[i][1], ref_diff-read_diff))
+                            cur_errors.append((seeds[i-1][1], seeds[i][1], read_name, ref_diff-read_diff))
                         elif seeds[i][1] - seeds[i-1][1] >= MAX_REF_GAP:
                             gap_s, gap_e = seeds[i-1][1]+KMER_SIZE, seeds[i][1]
                             if sum(rare_kmers_by_pos[gap_s:gap_e]) > MAX_MISSED_KMERS:

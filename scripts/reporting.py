@@ -86,6 +86,7 @@ def make_plotly_noise(assemblies, all_data, out_dir):
         data['stddev'] = [0] * len(data['coverage'])
         data['diff'] = [[] for i in range(len(data['coverage']))]
         vals = [0] * len(data['coverage'])
+        reads = [0] * len(data['coverage'])
         for e in errors:
             for i in range(e[0], e[1], step):
                 real_pos = i #- points[k][0]
@@ -93,21 +94,23 @@ def make_plotly_noise(assemblies, all_data, out_dir):
                 if real_pos >= len(data['reads']):
                     break
                 data['reads'][real_pos] += 1
-                data['diff'][real_pos].append(e[2])
+                data['diff'][real_pos].append((e[2], e[3]))
         new_errors =[]
         for i in range(len(data['reads'])):
-            mean_diff = np.mean(data['diff'][i]) if data['diff'][i] else 0
-            stddev = np.std(data['diff'][i]) if data['diff'][i] else 0
+            diff_arr = [d[1] for d in data['diff'][i]]
+            mean_diff = np.mean(diff_arr) if diff_arr else 0
+            stddev = np.std(diff_arr) if diff_arr else 0
             if stddev > 200:
                 stddev = min(stddev, 500)
-                filt_reads = [d for d in data['diff'][i] if abs(d-mean_diff) <= min(mean_diff/2, 3*stddev)]
+                filt_reads = [d[0] for d in data['diff'][i] if abs(d[1]-mean_diff) <= min(mean_diff/2, 3*stddev)]
+                filt_diff = [d[1] for d in data['diff'][i] if abs(d[1]-mean_diff) <= min(mean_diff/2, 3*stddev)]
             else:
-                filt_reads = data['diff'][i]
-            mean_diff2 = np.mean(filt_reads) if filt_reads else 0
-            stddev2 = np.std(filt_reads) if filt_reads else 0
-            data['diff'][i] = mean_diff2
-            data['stddev'][i] = stddev2
-            vals[i] = len(filt_reads)*1.0/(data['coverage'][i]+data['reads'][i]) if (data['coverage'][i]+data['reads'][i])>3 and  len(filt_reads) > 1 else 0
+                filt_diff = diff_arr
+                filt_reads = [d[0] for d in data['diff'][i]]
+            reads[i] = filt_reads
+            mean_diff2 = np.mean(filt_diff) if filt_diff else 0
+            stddev2 = np.std(filt_diff) if filt_diff else 0
+            vals[i] = len(filt_reads)*1.0/(data['coverage'][i]+data['reads'][i]) if (data['coverage'][i]+data['reads'][i])>3 and len(filt_reads) > 1 else 0
             customdata.append((len(filt_reads), data['coverage'][i]+data['reads'][i], mean_diff2, stddev2))
             if vals[i]>0.5:
                 new_errors.append((i*step, len(filt_reads), data['coverage'][i], data['coverage'][i]+data['reads'][i], mean_diff2, stddev2))
@@ -122,7 +125,31 @@ def make_plotly_noise(assemblies, all_data, out_dir):
                          hoverformat="d", row=plot_idx, col=1)
         fig.update_xaxes(title_text="Position", titlefont=dict(size=18), tickfont=dict(size=18), hoverformat="d",
                          row=plot_idx, col=1)
-
+    bed_fname = join(out_dir, "report", "kmers_dist_diff.bed")
+    prev_i = 0
+    with open(bed_fname, "w") as f:
+        for x,v in zip(real_x,vals):
+            if v >=0.8:
+                if not prev_i:
+                    prev_i = x
+            elif prev_i:
+                f.write("seq\t%d\t%d\n" % (prev_i, x-step))
+                prev_i = 0
+    reads_fname = join(out_dir, "report", "reads_dist_diff.txt")
+    with open(reads_fname, "w") as f:
+        support_reads = set()
+        for x,v,reads in zip(real_x,vals,reads):
+            if v >=0.8:
+                if not prev_i:
+                    prev_i = x
+                for r in reads:
+                    support_reads.add(r)
+            elif prev_i:
+                f.write("seq\t%d\t%d\n" % (prev_i, x-step))
+                for r in support_reads:
+                    f.write(r + "\n")
+                prev_i = 0
+                support_reads = set()
     plot_fname = join(out_dir, "report", "kmers_dist_diff.html")
     fig.write_html(plot_fname)
     print("  Difference in k-mer distances plot saved to %s" % plot_fname)
