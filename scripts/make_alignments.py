@@ -198,7 +198,8 @@ def do(assemblies, reads_fname, reads_real_coords, out_dir, threads, no_reuse):
     print("*********************************")
     print("Read mapping started...")
     run_parallel(run_flye, [(assembly, reads_fname, out_dir, max(1, threads // len(assemblies)))
-                            for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse], n_jobs=threads)
+                            for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse],
+                            n_jobs=min(len(assemblies), threads))
     all_data = []
     for assembly in assemblies:
         errors = postprocess_chains(assembly, reads_real_coords)

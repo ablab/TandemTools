@@ -44,13 +44,12 @@ def get_kmers_read_pos(assembly, reads_fname, solid_kmers=None):
             fs = line.split()
             if len(fs) < 7:
                 continue
-            #ref     16      63e6e431        167     60      37M4I78M1I17M1I7M2I7M1I20M1D18M2I16M1D39M1I12M1I74M1I26M1I30M2I81M2D16M1I32M1I22M4I15M2D
             read_name, ref_s, cigar = slugify(fs[0]), int(fs[3]), fs[5]
             if read_name not in read_lengths:
                 continue
             strand_direction = -1 if fs[1] == '16' else 1
             strand_in_ref[read_name] = strand_direction
-            align_start = 0 #if strand_direction == 1 else read_lengths[read_name]
+            align_start = 0 if strand_direction == 1 else read_lengths[read_name]
             operations = cigar_pattern.findall(cigar)
             align_len = 0
             ref_len = 0
@@ -72,13 +71,12 @@ def get_kmers_read_pos(assembly, reads_fname, solid_kmers=None):
 
     read_kmer_pos = defaultdict()
     if solid_kmers:
-        non_canonical_kmers = get_non_canonical_kmers(assembly.fname, solid_kmers)
         with open(reads_fname) as handle:
             for record in SeqIO.parse(handle, reads_fname.split('.')[-1]):
                 read_name = slugify(record.name)
                 if read_name not in strand_in_ref:
                     continue
-                read_seq = str(record.seq)
+                read_seq = str(record.seq).upper()
                 read_len = len(read_seq)
                 read_kmer_pos[read_name] = dict()
                 for i in range(read_len - KMER_SIZE+1):
