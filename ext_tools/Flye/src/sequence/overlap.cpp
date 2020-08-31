@@ -967,7 +967,7 @@ void OverlapContainer::estimateOverlaperParameters(const std::vector<int>& kmerP
 	std::mutex indexMutex;
 
 	std::function<void(const FastaRecord::Id&)> alignRead =
-	[this, &indexMutex, &fout, &isSam, &fsamout, &readAlignments, &readSamAlignments, &indexMutex]
+	[this, &indexMutex, &fout, &isSam, &fsamout, &readAlignments, &readSamAlignments]
 	(const FastaRecord::Id& seqId)
 	{
 		auto seq_overlaps = this->quickSeqOverlaps(seqId);
@@ -984,7 +984,7 @@ void OverlapContainer::estimateOverlaperParameters(const std::vector<int>& kmerP
             }
         }
 		indexMutex.unlock();
-        if (maxKmers >= 20){
+        if (maxKmers >= Parameters::get().minKmers){
             auto &ovlp = seq_overlaps[bestOvlpId];
             const FastaRecord fastaRec = _queryContainer.getRecord(seqId);
             if (_ovlpDetect._seqContainer.seqName(ovlp.extId).front()=='+') {

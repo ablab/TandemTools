@@ -19,8 +19,11 @@ from scripts.utils import compress_homopolymers
 @click.option('-l', 'labels', help='Comma separated list of assembly labels')
 @click.option('--hifi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads')
 @click.option('-f', '--no-reuse', 'no_reuse', is_flag=True, help='Do not reuse old files')
+@click.option('--no-nucl-align', 'no_nucl_alignment', is_flag=True, help='Do not perform nucleotide alignment '
+                                                                         '(use with caution)')
 
-def main(assembly_fnames, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname, out_dir, labels, threads, no_reuse):
+def main(assembly_fnames, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname, out_dir, labels, threads,
+         no_reuse, no_nucl_alignment):
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("%s TandemMapper started" % date)
 
@@ -66,7 +69,7 @@ def main(assembly_fnames, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname
         reads_fname = raw_reads_fname
 
     select_kmers.do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_dir, no_reuse)
-    make_alignments.do(assemblies, reads_fname, reads_real_coords, out_dir, threads, no_reuse)
+    make_alignments.do(assemblies, reads_fname, reads_real_coords, out_dir, threads, no_reuse, no_nucl_alignment)
 
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("")

@@ -81,6 +81,7 @@ struct Parameters
 	}
 
 	int 	minimumOverlap;
+	size_t 	minKmers;
 	size_t 	kmerSize;
 	size_t 	numThreads;
 	bool 	unevenCoverage;

@@ -26,7 +26,7 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
                std::string& inAssembly, std::string& outFile, std::string& kmersList,
                std::string& outAssembly, std::string& logFile, size_t& genomeSize,
 			   int& kmerSize, float& maxDiff, bool& debug, size_t& numThreads, int& minOverlap,
-			   std::string& configPath, int& minReadLength, bool& unevenCov, bool& polishSam)
+			   std::string& configPath, int& minReadLength, size_t& minKmers, bool& unevenCov, bool& polishSam)
 {
 	auto printUsage = [argv]()
 	{
@@ -59,6 +59,7 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 		{"reads", required_argument, 0, 0},
 		{"asm", required_argument, 0, 0},
 		{"kmers", required_argument, 0, 0},
+		{"min-kmers", required_argument, 0, 0},
 		{"max-diff", required_argument, 0, 0},
         {"out-file", required_argument, 0, 0},
 		{"out-asm", required_argument, 0, 0},
@@ -87,6 +88,8 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 				maxDiff = atof(optarg);
 			else if (!strcmp(longOptions[optionIndex].name, "min-read"))
 				minReadLength = atoi(optarg);
+			else if (!strcmp(longOptions[optionIndex].name, "min-kmers"))
+				minKmers = atoi(optarg);
 			else if (!strcmp(longOptions[optionIndex].name, "threads"))
 				numThreads = atoi(optarg);
 			else if (!strcmp(longOptions[optionIndex].name, "min-ovlp"))
@@ -139,6 +142,7 @@ int main(int argc, char** argv)
 
 	int kmerSize = 15;
 	int minReadLength = 0;
+	size_t minKmers = 0;
 	size_t genomeSize = 0;
 	int minOverlap = 5000;
 	float maxDiff = 0.15;
@@ -156,7 +160,7 @@ int main(int argc, char** argv)
 
 	if (!parseArgs(argc, argv, readsFasta, inAssembly, outFile, kmersList, outAssembly, logFile, genomeSize,
 				   kmerSize, maxDiff, debugging, numThreads, minOverlap, configPath,
-				   minReadLength, unevenCov, polishSam)) return 1;
+				   minReadLength, minKmers, unevenCov, polishSam)) return 1;
 
 	Logger::get().setDebugging(debugging);
 	if (!logFile.empty()) Logger::get().setOutputFile(logFile);
@@ -177,6 +181,7 @@ int main(int argc, char** argv)
 	Parameters::get().polishSam = polishSam;
 
 	Parameters::get().maxDiff = maxDiff;
+	Parameters::get().minKmers = minKmers;
 	Logger::get().debug() << "Running with k-mer size: " << 
 		Parameters::get().kmerSize; 
 	Logger::get().debug() << "Running with minimum overlap " << minOverlap;

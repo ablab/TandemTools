@@ -29,7 +29,7 @@ def make_flye():
     print('Flye is compiled successful!')
 
 
-def run_flye(assembly, reads_fname, out_dir, threads):
+def run_flye(assembly, reads_fname, out_dir, threads, no_nucl_alignment):
     try:
         make_flye()
     except:
@@ -42,7 +42,7 @@ def run_flye(assembly, reads_fname, out_dir, threads):
            '--out-file', abspath(assembly.chains_fname),
            '--out-asm', 'draft_assembly.fasta', '--max-diff', str(assembly.max_aln_diff),
            '--genome-size', str(get_fasta_len(assembly.fname)), '--config', abspath(get_flye_cfg_fname()),
-           '--log', join(out_dir, 'mapping.log'),
+           '--log', join(out_dir, 'mapping.log'), '--min-kmers', str(MIN_CHAIN_KMERS) if not no_nucl_alignment else '1000000',
            '--threads', str(threads), '--min-ovlp', str(MIN_CHAIN_LEN), '--kmer', str(KMER_SIZE)]
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
 
@@ -193,11 +193,11 @@ def postprocess_chains(assembly, reads_real_coords):
     return all_errors
 
 
-def do(assemblies, reads_fname, reads_real_coords, out_dir, threads, no_reuse):
+def do(assemblies, reads_fname, reads_real_coords, out_dir, threads, no_reuse, no_nucl_alignment):
     print("")
     print("*********************************")
     print("Read mapping started...")
-    run_parallel(run_flye, [(assembly, reads_fname, out_dir, max(1, threads // len(assemblies)))
+    run_parallel(run_flye, [(assembly, reads_fname, out_dir, max(1, threads // len(assemblies)), no_nucl_alignment)
                             for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse],
                             n_jobs=min(len(assemblies), threads))
     all_data = []

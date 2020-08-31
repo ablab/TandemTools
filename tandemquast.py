@@ -40,8 +40,11 @@ def set_params(fnames, threads):
 @click.option('-l', 'labels', help='Comma separated list of assembly labels')
 @click.option('--hifi', 'hifi_reads_fname',  type=click.Path(), help='File with PacBio HiFi reads')
 @click.option('--only-polish', 'only_polish', is_flag=True, help='Run polishing only')
+@click.option('--no-nucl-align', 'no_nucl_alignment', is_flag=True, help='Do not perform nucleotide alignment '
+                                                                         '(use with caution)')
 @click.option('-f', '--no-reuse', 'no_reuse', is_flag=True, help='Do not reuse old files')
-def main(assembly_fnames, labels, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname, out_dir, threads, monomers_fname, no_reuse, only_polish):
+def main(assembly_fnames, labels, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname, out_dir, threads, monomers_fname,
+         no_reuse, only_polish, no_nucl_alignment):
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("%s TandemQUAST started" % date)
 
@@ -96,6 +99,7 @@ def main(assembly_fnames, labels, nano_reads_fname, pacbio_reads_fname, hifi_rea
     cmdl = [abspath(join(dirname(realpath(__file__)), "tandemmapper.py")), "-t", str(threads), "-o", out_dir] + \
            ["--nano" if nano_reads_fname else "--pacbio", reads_fname] + \
            ["-l", ",".join([assembly.label for assembly in assemblies])] + \
+           (["--no-nucl-align"] if no_nucl_alignment else []) + \
            [assembly.fname for assembly in assemblies] + (["-f"] if no_reuse else [])
     return_code = subprocess.call(cmdl)
     if return_code != 0:
@@ -108,8 +112,9 @@ def main(assembly_fnames, labels, nano_reads_fname, pacbio_reads_fname, hifi_rea
     # -----BREAKPOINTS----
     bp_analysis.do(assemblies, out_dir)
 
-    # -----KMER-based ANALYSIS----
-    kmer_analysis.do(assemblies, reads_fname, out_dir, no_reuse)
+    if not no_nucl_alignment:
+        # -----KMER-based ANALYSIS----
+        kmer_analysis.do(assemblies, reads_fname, out_dir, no_reuse)
 
     # -----PAIRWISE----
     pairwise_comparison.do(assemblies, out_dir)
