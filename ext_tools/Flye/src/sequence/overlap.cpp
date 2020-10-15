@@ -971,6 +971,7 @@ void OverlapContainer::estimateOverlaperParameters(const std::vector<int>& kmerP
 	(const FastaRecord::Id& seqId)
 	{
 		auto seq_overlaps = this->quickSeqOverlaps(seqId);
+		if (seq_overlaps.size() == 0) return;
         size_t maxKmers = 0;
         size_t bestOvlpId = 0;
 		/////synchronized part

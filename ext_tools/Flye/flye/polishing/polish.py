@@ -78,8 +78,8 @@ def polish(contig_seqs, read_seqs, work_dir, kmers_fname, genome_size, num_threa
           "--genome-size %s --config %s " \
           "--log %s/flye.log --min-ovlp 3000  " \
           "--out-file %s --kmers %s " \
-          "--asm %s --debug --kmer %s" % (ASSEMBLY_BIN, read_seqs, genome_size, config_fname,
-            work_dir, raw_alignment_file, kmers_fname, prev_assembly, KMER_SIZE)
+          "--asm %s --debug --kmer %s --threads %d" % (ASSEMBLY_BIN, read_seqs, genome_size, config_fname,
+            work_dir, raw_alignment_file, kmers_fname, prev_assembly, KMER_SIZE, num_threads)
     print(cmd)
 
     subprocess.call(cmd, shell=True,stderr=open("/dev/null", "w"))

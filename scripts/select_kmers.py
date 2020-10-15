@@ -220,7 +220,7 @@ def do(assemblies, raw_reads_fname, reads_fname, hifi_reads_fname, out_dir, tmp_
         kmer_markers = [1 if i else 0 for i in kmer_by_pos]
         kmer_density = [sum(kmer_markers[i:i+KMER_SELECT_WINDOW_SIZE]) for i in range(0, len(kmer_by_pos), KMER_SELECT_WINDOW_SIZE)]
         kmer_density = [k for k in kmer_density if k > 1]
-        max_density = min(KMER_WINDOW_SIZE/5, int(np.median(kmer_density) + 2*np.std(kmer_density)))
+        max_density = min(int(KMER_WINDOW_SIZE/5), int(np.median(kmer_density) + 2*np.std(kmer_density)))
         filtered_kmers = []
         random.seed(13)
         for i in range(0, len(kmer_by_pos), KMER_SELECT_WINDOW_SIZE):
