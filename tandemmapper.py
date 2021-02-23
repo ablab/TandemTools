@@ -47,6 +47,9 @@ def main(assembly_fnames, nano_reads_fname, pacbio_reads_fname, hifi_reads_fname
     out_dir = abspath(out_dir)
     if not isdir(out_dir):
         os.makedirs(out_dir)
+    report_dir = join(out_dir, "report")
+    if not isdir(report_dir):
+        os.makedirs(report_dir)
     tmp_dir = join(out_dir, "tmp")
     if not isdir(tmp_dir):
         os.makedirs(tmp_dir)
